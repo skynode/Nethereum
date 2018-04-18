@@ -1,23 +1,55 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace Nethereum.Generators.Core
 {
     public static class CodeGenLanguageExt
     {
+
+        private static readonly Dictionary<CodeGenLanguage, string> ProjectFileExtensions = new Dictionary<CodeGenLanguage, string>
+        {
+            {CodeGenLanguage.CSharp, ".csproj"},
+            {CodeGenLanguage.FSharp, ".fsproj"},
+            {CodeGenLanguage.Vb, ".vbproj"}
+        };
+
+        public static string AddProjectFileExtension(this CodeGenLanguage language, string projectFileName)
+        {
+            if (string.IsNullOrEmpty(projectFileName))
+                throw new ArgumentNullException(nameof(projectFileName));
+
+            if (ProjectFileExtensions.TryGetValue(language, out string extension))
+            {
+                var requestedExtension = Path.GetExtension(projectFileName);
+                if (string.IsNullOrEmpty(requestedExtension))
+                    return $"{projectFileName.TrimEnd('.')}{extension}";
+
+                return Path.ChangeExtension(projectFileName, extension);
+            }
+
+            throw new Exception($"Project file generation is not supported for {language}");
+        }
+
         public static string GetCodeOutputFileExtension(this CodeGenLanguage codeGenLanguage)
         {
-            switch (codeGenLanguage)
+            if (codeGenLanguage == CodeGenLanguage.CSharp)
+                return "cs";
+            else if (codeGenLanguage == CodeGenLanguage.Vb)
             {
-                case CodeGenLanguage.CSharp:
-                    return "cs";
-                case CodeGenLanguage.Vb:
-                    return "vb";
-                case CodeGenLanguage.Proto:
-                    return "proto";
-                case CodeGenLanguage.FSharp:
-                    return "fs";
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(codeGenLanguage), codeGenLanguage, null);
+                return "vb";
+            }
+            else if (codeGenLanguage == CodeGenLanguage.Proto)
+            {
+                return "proto";
+            }
+            else if (codeGenLanguage == CodeGenLanguage.FSharp)
+            {
+                return "fs";
+            }
+            else
+            {
+                throw new ArgumentOutOfRangeException(nameof(codeGenLanguage), codeGenLanguage, null);
             }
         }
     }
