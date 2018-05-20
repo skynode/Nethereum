@@ -22,6 +22,7 @@ namespace Nethereum.JsonRpc.IpcClient
         private readonly ILog _log;
 
         private NamedPipeClientStream _pipeClient;
+      
 
         public IpcClient(string ipcPath, JsonSerializerSettings jsonSerializerSettings = null, ILog log = null) : base(ipcPath, jsonSerializerSettings)
         {
@@ -35,8 +36,12 @@ namespace Nethereum.JsonRpc.IpcClient
                 if (_pipeClient == null || !_pipeClient.IsConnected)
                 {
                     _pipeClient = new NamedPipeClientStream(IpcPath);
-                    _pipeClient.Connect();
+                    _pipeClient.Connect(ConnectionTimeout);
                 }
+            }
+            catch (TimeoutException ex)
+            {
+                throw new RpcClientTimeoutException($"Rpc timeout afer {ConnectionTimeout} milliseconds", ex);
             }
             catch
             {
@@ -53,7 +58,7 @@ namespace Nethereum.JsonRpc.IpcClient
             int bytesRead = 0;
             if (Task.Run(async () =>
                     bytesRead = await client.ReadAsync(buffer, 0, buffer.Length)
-                ).Wait(2000))
+                ).Wait(ForceCompleteReadTotalMiliseconds))
             {
                 return bytesRead;
             }
