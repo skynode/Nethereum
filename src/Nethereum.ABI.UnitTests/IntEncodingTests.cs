@@ -113,6 +113,31 @@ namespace Nethereum.ABI.UnitTests
             Assert.Equal(byte.MaxValue, intresult);
         }
 
+        public enum TestEnum
+        {
+            Monkey,
+            Elephant,
+            Lion
+        }
+
+        [Fact]
+        public virtual void ShouldEncodeDecodeEnum()
+        {
+            var intType = new IntType("int");
+            var result1 = intType.Encode(TestEnum.Monkey).ToHex();
+            var decresult1 = intType.Decode<TestEnum>(result1);
+            Assert.Equal(TestEnum.Monkey, decresult1);
+
+            var result2 = intType.Encode(TestEnum.Elephant).ToHex();
+            var decresult2 = intType.Decode<TestEnum>(result2);
+            Assert.Equal(TestEnum.Elephant, decresult2);
+
+            var result3 = intType.Encode(TestEnum.Lion).ToHex();
+            var decresult3 = intType.Decode<TestEnum>(result3);
+            Assert.Equal(TestEnum.Lion, decresult3);
+
+        }
+
 
         [Fact]
         public virtual void ShouldEncodeDecodeInt()
@@ -202,13 +227,39 @@ namespace Nethereum.ABI.UnitTests
         }
 
         [Fact]
-        public virtual void ShouldThrowErrorWhileEncodeLargeInt()
+        public virtual void ShouldThrowErrorWhenEncodingExceedingUintMaxValue()
         {
-            const int maxIntSizeInBytes = 32;
             var intType = new IntType("uint");
-            var given = new BigInteger(Enumerable.Range(1, maxIntSizeInBytes + 1).Select(x => (byte) x).ToArray());
+            var given = IntType.MAX_UINT256_VALUE + 1;
             var ex = Assert.Throws<ArgumentOutOfRangeException>("value", () => intType.Encode(given));
-            Assert.StartsWith($"Integer value must not exceed maximum Solidity size of {maxIntSizeInBytes} bytes", ex.Message);
+            Assert.StartsWith($"Unsigned SmartContract integer must not exceed maximum value for uint256", ex.Message);
+        }
+
+        [Fact]
+        public virtual void ShouldThrowErrorWhenEncodingIsLessThanUintMaxValue()
+        {
+            var intType = new IntType("uint");
+            var given = IntType.MIN_UINT_VALUE - 1;
+            var ex = Assert.Throws<ArgumentOutOfRangeException>("value", () => intType.Encode(given));
+            Assert.StartsWith($"Unsigned SmartContract integer must not be less than the minimum value of uint:", ex.Message);
+        }
+
+        [Fact]
+        public virtual void ShouldThrowErrorWhenEncodingExceedingIntMaxValue()
+        {
+            var intType = new IntType("int");
+            var given = IntType.MAX_INT256_VALUE + 1;
+            var ex = Assert.Throws<ArgumentOutOfRangeException>("value", () => intType.Encode(given));
+            Assert.StartsWith($"Signed SmartContract integer must not exceed maximum value for int256", ex.Message);
+        }
+
+        [Fact]
+        public virtual void ShouldThrowErrorWhenEncodingIsLessThanIntMinValue()
+        {
+            var intType = new IntType("int");
+            var given = IntType.MIN_INT256_VALUE - 1;
+            var ex = Assert.Throws<ArgumentOutOfRangeException>("value", () => intType.Encode(given));
+            Assert.StartsWith($"Signed SmartContract integer must not be less than the minimum value for int256", ex.Message);
         }
 
         [Fact]

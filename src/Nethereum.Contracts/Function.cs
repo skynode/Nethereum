@@ -197,6 +197,16 @@ namespace Nethereum.Contracts
             return FunctionBuilder.GetData(functionInput);
         }
 
+        public TFunctionInput DecodeFunctionInput(TFunctionInput functionInput, TransactionInput transactionInput)
+        {
+            return FunctionBuilder.DecodeFunctionInput(functionInput, transactionInput);
+        }
+
+        public TFunctionInput DecodeFunctionInput(TFunctionInput functionInput, string data)
+        {
+            return FunctionBuilder.DecodeFunctionInput(functionInput, data);
+        }
+
         public TransactionInput CreateTransactionInput(TFunctionInput functionInput, string from)
         {
             return FunctionBuilder.CreateTransactionInput(functionInput, from);
@@ -214,6 +224,7 @@ namespace Nethereum.Contracts
             return FunctionBuilder.CreateTransactionInput(functionInput, from, gas, gasPrice, value);
         }
 
+       
 
         public Task<TReturn> CallAsync<TReturn>()
         {
@@ -331,6 +342,36 @@ namespace Nethereum.Contracts
         }
 
 #if !DOTNET35
+
+        public Task<byte[]> CallRawAsync<TReturn>()
+        {
+            return base.CallRawAsync(CreateCallInputParameterless());
+        }
+
+        public Task<byte[]> CallRawAsync<TReturn>(TFunctionInput functionInput)
+        {
+            return base.CallRawAsync(CreateCallInput(functionInput));
+        }
+
+        public Task<byte[]> CallRawAsync(TFunctionInput functionInput, string from, HexBigInteger gas,
+            HexBigInteger value)
+        {
+            return base.CallRawAsync(CreateCallInput(functionInput, from, gas, value));
+        }
+
+        public Task<byte[]> CallRawAsync(TFunctionInput functionInput, string from, HexBigInteger gas,
+            HexBigInteger value, BlockParameter block)
+        {
+            return base.CallRawAsync(CreateCallInput(functionInput, from, gas, value), block);
+        }
+
+        public Task<byte[]> CallRawAsync(TFunctionInput functionInput,
+            BlockParameter blockParameter)
+        {
+            return base.CallRawAsync(CreateCallInput(functionInput), blockParameter);
+        }
+
+
         public Task<TransactionReceipt> SendTransactionAndWaitForReceiptAsync(TFunctionInput functionInput, string from,
             CancellationTokenSource receiptRequestCancellationToken = null)
         {

@@ -1,12 +1,26 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Reflection;
 using Nethereum.Hex.HexConvertors.Extensions;
 
 namespace Nethereum.ABI.Decoders
 {
     public class IntTypeDecoder : TypeDecoder
     {
+        private readonly bool _signed;
+
+        public IntTypeDecoder(bool signed)
+        {
+            _signed = signed;
+        }
+
+        public IntTypeDecoder():this(false)
+        {
+            
+        }
+
         public override object Decode(byte[] encoded, Type type)
         {
             if (type == typeof(byte))
@@ -23,6 +37,12 @@ namespace Nethereum.ABI.Decoders
 
             if (type == typeof(int))
                 return DecodeInt(encoded);
+
+            if (type.GetTypeInfo().IsEnum)
+            {
+                var val = DecodeInt(encoded);
+                return Enum.ToObject(type, val);
+            }
 
             if (type == typeof(uint))
                 return DecodeUInt(encoded);
@@ -49,7 +69,15 @@ namespace Nethereum.ABI.Decoders
 
         public BigInteger DecodeBigInteger(byte[] encoded)
         {
-            var negative = encoded.First() == 0xFF;
+            var negative = false;
+            if (_signed) negative = encoded.First() == 0xFF;
+
+            if (!_signed)
+            {
+                var listEncoded = encoded.ToList();
+                listEncoded.Insert(0,0x00);
+                encoded = listEncoded.ToArray();
+            }
 
             if (BitConverter.IsLittleEndian)
                 encoded = encoded.Reverse().ToArray();
@@ -113,7 +141,8 @@ namespace Nethereum.ABI.Decoders
                    (type == typeof(ulong)) || (type == typeof(long))  ||
                    (type == typeof(short)) || (type == typeof(ushort)) ||
                    (type == typeof(byte)) || (type == typeof(sbyte)) ||
-                   (type == typeof(BigInteger)) || (type == typeof(object)) ;
+                   (type == typeof(BigInteger)) || (type == typeof(object))
+                   || type.GetTypeInfo().IsEnum;
         }
     }
 }

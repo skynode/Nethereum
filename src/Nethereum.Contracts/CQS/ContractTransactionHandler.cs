@@ -9,115 +9,89 @@ namespace Nethereum.Contracts.CQS
     public class ContractTransactionHandler<TContractMessage> : ContractHandlerBase<TContractMessage>
         where TContractMessage : ContractMessage
     {
-        private Function<TContractMessage> GetFunction(string contractAddress)
-        {
-            var contract = Eth.GetContract<TContractMessage>(contractAddress);
-            var function = contract.GetFunction<TContractMessage>();
-            return function;
-        }
-
-        public TransactionInput CreateTransactionInput(TContractMessage functionMessage,
-            string contractAddress)
-        {
-            ValidateContractMessage(functionMessage);
-            var function = GetFunction(contractAddress);
-            return function.CreateTransactionInput(
-                functionMessage,
-                GetDefaultAddressFrom(functionMessage),
-                GetMaximumGas(functionMessage),
-                GetGasPrice(functionMessage),
-                GetValue(functionMessage));
-        }
-
-        public string GetData(TContractMessage functionMessage, string contractAddress)
-        {
-            ValidateContractMessage(functionMessage);
-            var function = GetFunction(contractAddress);
-            return function.GetData(functionMessage);
-        }
+        private FunctionMessageEncodingService<TContractMessage> _functionMessageEncodingService = new FunctionMessageEncodingService<TContractMessage>();
 
 #if !DOTNET35
+
+        public async Task<string> SignTransactionAsync(TContractMessage functionMessage,
+            string contractAddress, bool estimateGas = true)
+        {
+            EnsureInitEncodingService(contractAddress);
+            TransactionInput transactionInput = null;
+            if (estimateGas)
+                transactionInput = await CreateTransactionInputEstimatingGasAsync(functionMessage, contractAddress).ConfigureAwait(false);
+            else
+                transactionInput = CreateTransactionInput(functionMessage);
+            return await this.Eth.TransactionManager.SignTransactionAsync(transactionInput).ConfigureAwait(false);
+        }
+
+        public async Task<string> SignTransactionRetrievingNextNonceAsync(TContractMessage functionMessage,
+            string contractAddress, bool estimateGas = true)
+        {
+            EnsureInitEncodingService(contractAddress);
+            TransactionInput transactionInput = null;
+            if (estimateGas)
+                transactionInput = await CreateTransactionInputEstimatingGasAsync(functionMessage, contractAddress).ConfigureAwait(false);
+            else
+                transactionInput = CreateTransactionInput(functionMessage);
+            return await this.Eth.TransactionManager.SignTransactionRetrievingNextNonceAsync(transactionInput).ConfigureAwait(false);
+        }
+
         public async Task<TransactionReceipt> SendRequestAndWaitForReceiptAsync(TContractMessage functionMessage,
             string contractAddress, CancellationTokenSource tokenSource = null)
         {
-            ValidateContractMessage(functionMessage);
-            var function = GetFunction(contractAddress);
-
-            var gasEstimate = await GetOrEstimateMaximumGas(functionMessage, function).ConfigureAwait(false);
-            return await ExecuteTransactionAndWaitForReceiptAsync(functionMessage, gasEstimate, function, tokenSource)
-                .ConfigureAwait(false);
+            EnsureInitEncodingService(contractAddress);
+            var transactionInput = await CreateTransactionInputEstimatingGasAsync(functionMessage, contractAddress).ConfigureAwait(false);
+            return await Eth.TransactionManager.SendTransactionAndWaitForReceiptAsync(transactionInput, tokenSource).ConfigureAwait(false);
         }
 
         public async Task<string> SendRequestAsync(TContractMessage functionMessage, string contractAddress)
         {
-            ValidateContractMessage(functionMessage);
-            var function = GetFunction(contractAddress);
-
-            var gasEstimate = await GetOrEstimateMaximumGas(functionMessage, function).ConfigureAwait(false);
-            return await ExecuteTransactionAsync(functionMessage, gasEstimate, function).ConfigureAwait(false);
+            EnsureInitEncodingService(contractAddress);
+            var transactionInput = await CreateTransactionInputEstimatingGasAsync(functionMessage, contractAddress).ConfigureAwait(false);
+            return await Eth.TransactionManager.SendTransactionAsync(transactionInput).ConfigureAwait(false);
         }
 
         public async Task<TransactionInput> CreateTransactionInputEstimatingGasAsync(TContractMessage functionMessage,
             string contractAddress)
         {
-            ValidateContractMessage(functionMessage);
-            var function = GetFunction(contractAddress);
-
-            var gasEstimate = await GetOrEstimateMaximumGas(functionMessage, function).ConfigureAwait(false);
-
-            return function.CreateTransactionInput(
-                functionMessage,
-                GetDefaultAddressFrom(functionMessage),
-                gasEstimate,
-                GetGasPrice(functionMessage),
-                GetValue(functionMessage));
+            EnsureInitEncodingService(contractAddress);
+            var gasEstimate = await GetOrEstimateMaximumGas(functionMessage, contractAddress).ConfigureAwait(false);
+            functionMessage.Gas = gasEstimate;
+            return _functionMessageEncodingService.CreateTransactionInput(functionMessage);
         }
 
         protected virtual async Task<HexBigInteger> GetOrEstimateMaximumGas(TContractMessage functionMessage,
-            Function<TContractMessage> function)
+            string contractAddress)
         {
-            var maxGas = GetMaximumGas(functionMessage) ??
-                         await EstimateGasAsync(functionMessage, function).ConfigureAwait(false);
+            var maxGas = functionMessage.GetHexMaximumGas() ??
+                         await EstimateGasAsync(functionMessage, contractAddress).ConfigureAwait(false);
             return maxGas;
-        }
-
-        protected Task<string> ExecuteTransactionAsync(TContractMessage functionMessage, HexBigInteger gasEstimate,
-            Function<TContractMessage> function, CancellationTokenSource tokenSource = null)
-        {
-            return function.SendTransactionAsync(
-                functionMessage,
-                GetDefaultAddressFrom(functionMessage),
-                gasEstimate,
-                GetGasPrice(functionMessage),
-                GetValue(functionMessage));
-        }
-
-        protected Task<TransactionReceipt> ExecuteTransactionAndWaitForReceiptAsync(TContractMessage functionMessage,
-            HexBigInteger gasEstimate, Function<TContractMessage> function, CancellationTokenSource tokenSource = null)
-        {
-            return function.SendTransactionAndWaitForReceiptAsync(
-                functionMessage,
-                GetDefaultAddressFrom(functionMessage),
-                gasEstimate,
-                GetGasPrice(functionMessage),
-                GetValue(functionMessage),
-                tokenSource);
         }
 
         public Task<HexBigInteger> EstimateGasAsync(TContractMessage functionMessage, string contractAddress)
         {
-            ValidateContractMessage(functionMessage);
-            var contract = Eth.GetContract<TContractMessage>(contractAddress);
-            var function = contract.GetFunction<TContractMessage>();
-            return EstimateGasAsync(functionMessage, function);
+            EnsureInitEncodingService(contractAddress);
+            var callInput = CreateCallInput(functionMessage);
+            return Eth.TransactionManager.EstimateGasAsync(callInput);
         }
 
-        protected Task<HexBigInteger> EstimateGasAsync(TContractMessage functionMessage,
-            Function<TContractMessage> function)
+        private CallInput CreateCallInput(TContractMessage functionMessage)
         {
-            return function.EstimateGasAsync(functionMessage, GetDefaultAddressFrom(functionMessage), null,
-                GetValue(functionMessage));
+            return _functionMessageEncodingService.CreateCallInput(functionMessage);
         }
+
+        private TransactionInput CreateTransactionInput(TContractMessage functionMessage)
+        {
+            return _functionMessageEncodingService.CreateTransactionInput(functionMessage);
+        }
+
+        private void EnsureInitEncodingService(string contractAddress)
+        {
+            _functionMessageEncodingService.SetContractAddress(contractAddress);
+            _functionMessageEncodingService.DefaultAddressFrom = GetAccountAddressFrom();
+        }
+
 #endif
     }
 

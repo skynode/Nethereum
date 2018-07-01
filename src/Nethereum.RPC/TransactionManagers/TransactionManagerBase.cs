@@ -5,6 +5,7 @@ using Nethereum.JsonRpc.Client;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.RPC.Eth.Transactions;
 using System.Numerics;
+using System.Threading;
 using Nethereum.RPC.Accounts;
 using Nethereum.RPC.TransactionReceipts;
 
@@ -16,6 +17,8 @@ namespace Nethereum.RPC.TransactionManagers
         public abstract BigInteger DefaultGasPrice { get; set; }
         public abstract BigInteger DefaultGas { get; set; }
         public IAccount Account { get; protected set; }
+        public abstract Task<string> SignTransactionAsync(TransactionInput transaction);
+        public abstract Task<string> SignTransactionRetrievingNextNonceAsync(TransactionInput transaction);
 
 #if !DOTNET35
         private ITransactionReceiptService _transactionReceiptService;
@@ -29,6 +32,11 @@ namespace Nethereum.RPC.TransactionManagers
             {
                 _transactionReceiptService = value;
             }
+        }
+
+        public Task<TransactionReceipt> SendTransactionAndWaitForReceiptAsync(TransactionInput transactionInput, CancellationTokenSource tokenSource)
+        {
+            return TransactionReceiptService.SendRequestAndWaitForReceiptAsync(transactionInput, tokenSource);
         }
 #endif               
         public virtual Task<HexBigInteger> EstimateGasAsync(CallInput callInput)

@@ -21,6 +21,23 @@ namespace Nethereum.ABI.FunctionEncoding
             return DecodeDefaultData(data, parameters);
         }
 
+        public T DecodeFunctionInput<T>(string sha3Signature, string data) where T : new()
+        {
+            return DecodeFunctionInput(new T(), sha3Signature, data);
+        }
+
+        public T DecodeFunctionInput<T>(T functionInput, string sha3Signature, string data)
+        {
+            if (!sha3Signature.StartsWith("0x")) sha3Signature = "0x" + sha3Signature;
+            if (!data.StartsWith("0x")) data = "0x" + data;
+
+            if ((data == "0x") || (data == sha3Signature)) return default(T);
+            if (data.StartsWith(sha3Signature))
+                data = data.Substring(sha3Signature.Length);
+            DecodeFunctionOutput(functionInput, data);
+            return functionInput;
+        }
+
         public T DecodeFunctionOutput<T>(string output) where T : new()
         {
             if (output == "0x") return default(T);
@@ -41,9 +58,9 @@ namespace Nethereum.ABI.FunctionEncoding
                 throw new ArgumentException("Generic Type should have a Function Ouput Attribute");
 
 #if DOTNET35
-            var properties = type.GetTypeInfo().DeclaredProperties();
+            var properties = type.GetTypeInfo().GetProperties();
 #else
-            var properties = type.GetTypeInfo().DeclaredProperties;
+            var properties = type.GetRuntimeProperties();
 #endif
             DecodeAttributes(output, functionOutputResult, properties.ToArray());
 

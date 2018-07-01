@@ -74,13 +74,15 @@ declare module Nethereum {
 
             // Nethereum.Generators.Core.ParameterABIModel
             export interface ParameterABIModel extends ParameterModel$1<Model.ParameterABI> {
+                GetPropertyName$1(parameterDirection: ParameterDirection): string;
                 GetVariableName$1(name: string, order: int): string;
-                GetPropertyName$1(name: string, order: int): string;
-                GetParameterName(name: string, order: int): string;
+                GetPropertyName$2(name: string, order: int, parameterDirection?: ParameterDirection): string;
             }
             export interface ParameterABIModelTypeFunc extends TypeFunction {
                 (): ParameterABIModelTypeFunc;
                 prototype: ParameterABIModel;
+                AnonymousInputParameterPrefix: string;
+                AnonymousOutputParameterPrefix: string;
                 ctor$1: { new (parameter: Model.ParameterABI): ParameterABIModel; };
                 new (): ParameterABIModel;
                 ctor: { new (): ParameterABIModel; };
@@ -170,10 +172,15 @@ declare module Nethereum {
             export interface CodeGenLanguageExtTypeFunc extends TypeFunction {
                 (): CodeGenLanguageExtTypeFunc;
                 ProjectFileExtensions: System.Collections.Generic.Dictionary$2<CodeGenLanguage, string>;
+                LanguageMappings: System.Collections.Generic.Dictionary$2<string, CodeGenLanguage>;
                 DotNetCliLanguage: System.Collections.Generic.Dictionary$2<CodeGenLanguage, string>;
+                GetValidProjectFileExtensions(): System.Collections.Generic.IEnumerable$1<string>;
+                ParseLanguage(languageTag: string): CodeGenLanguage;
                 ToDotNetCli(language: CodeGenLanguage): string;
                 AddProjectFileExtension(language: CodeGenLanguage, projectFileName: string): string;
+                GetCodeGenLanguageFromProjectFile(projectFilePath: string): CodeGenLanguage;
                 GetCodeOutputFileExtension(codeGenLanguage: CodeGenLanguage): string;
+                StringComparerIgnoreCase: CodeGenLanguageExt.StringComparerIgnoreCaseTypeFunc;
             }
             const CodeGenLanguageExt: CodeGenLanguageExtTypeFunc;
 
@@ -280,6 +287,12 @@ declare module Nethereum {
                 ctor: { new (name: string, type: string, order: int): Parameter; };
             }
             const Parameter: ParameterTypeFunc;
+
+            // Nethereum.Generators.Core.ParameterDirection
+            export enum ParameterDirection {
+                Input = 0,
+                Output = 1
+            }
 
             // Nethereum.Generators.Core.ParameterMap<T1, T2>
             export interface ParameterMap$2<T1, T2> extends System.Object {
@@ -403,6 +416,19 @@ declare module Nethereum {
                 ctor: { new (): Utils; };
             }
             const Utils: UtilsTypeFunc;
+            module CodeGenLanguageExt {
+                // Nethereum.Generators.Core.CodeGenLanguageExt.StringComparerIgnoreCase
+                export interface StringComparerIgnoreCase extends System.Object, System.Collections.Generic.IEqualityComparer$1<String> {
+                    Equals$1(x: string, y: string): boolean;
+                    GetHashCode$1(obj: string): int;
+                }
+                export interface StringComparerIgnoreCaseTypeFunc extends TypeFunction {
+                    (): StringComparerIgnoreCaseTypeFunc;
+                    prototype: StringComparerIgnoreCase;
+                    new (): StringComparerIgnoreCase;
+                    ctor: { new (): StringComparerIgnoreCase; };
+                }
+            }
         }
         module Model {
             // Nethereum.Generators.Model.ConstructorABI

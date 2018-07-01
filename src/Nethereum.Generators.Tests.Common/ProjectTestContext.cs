@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Xml;
 using Nethereum.Generators.Core;
 using Nethereum.Generators.Tests.Common.TestData;
 
@@ -26,7 +27,6 @@ namespace Nethereum.Generators.Tests.Common
 
             ProjectName = TargetProjectFolder.Split(Path.DirectorySeparatorChar).Last();
             OutputAssemblyName = $"{ProjectName}.dll";
-            ProjectFilePath = Path.Combine(TargetProjectFolder, ProjectName) + ".csproj";
         }
 
         public string WriteFileToProject(string fileName, string fileContent)
@@ -34,11 +34,32 @@ namespace Nethereum.Generators.Tests.Common
             return TestEnvironment.WriteFileToFolder(TargetProjectFolder, fileName, fileContent);
         }
 
+        private void ReferenceLocalNugetPackages()
+        {
+            if (!Directory.Exists(LocalNugetPackageFolder))
+                return;
+
+            string nugetConfig = 
+$@"<?xml version=""1.0"" encoding=""utf-8""?>
+<configuration>
+  <packageSources>
+    <clear />
+    <add key=""Local"" value=""{LocalNugetPackageFolder}"" />
+    <add key=""NuGet"" value=""https://api.nuget.org/v3/index.json"" />
+  </packageSources>
+</configuration>
+";
+            WriteFileToProject("NuGet.config", nugetConfig);
+        }
+
+        public string LocalNugetPackageFolder { get; set; } = @"C:\dev\test\nuget\packages";
+
         public void CreateProject(CodeGenLanguage language = CodeGenLanguage.CSharp, IEnumerable<Tuple<string, string>> nugetPackages = null)
         {
             EmptyTargetFolder();
 
             Directory.CreateDirectory(TargetProjectFolder);
+            ReferenceLocalNugetPackages();
             CreateProjectFile(language);
             if (nugetPackages != null)
             {
@@ -47,6 +68,11 @@ namespace Nethereum.Generators.Tests.Common
                     AddNugetPackage(nuget.Item1, nuget.Item2);
                 }
             }
+        }
+
+        public void CreateEmptyProject()
+        {
+            Directory.CreateDirectory(TargetProjectFolder);
         }
 
         public bool DirectoryExists(string subDirectory)
@@ -66,7 +92,7 @@ namespace Nethereum.Generators.Tests.Common
 
         public bool BuildHasSucceeded()
         {
-            var outputDir = Path.Combine(TargetProjectFolder, @"bin\Debug\netstandard2.0\");
+            var outputDir = Path.Combine(TargetProjectFolder, "bin", "Debug", TargetFramework);
             return Directory.Exists(outputDir) && Directory.GetFiles(outputDir, "*.dll").Length > 0;
         }
 
@@ -83,6 +109,9 @@ namespace Nethereum.Generators.Tests.Common
 
         private static void DeleteDirectory(string path)
         {
+            if (!Directory.Exists(path))
+                return;
+
             foreach (string directory in Directory.GetDirectories(path))
             {
                 DeleteDirectory(directory);
@@ -95,6 +124,9 @@ namespace Nethereum.Generators.Tests.Common
         {
             try
             {
+                if (!Directory.Exists(path))
+                    return;
+
                 attemptNumber++;
                 if(attemptNumber < 4)
                     Directory.Delete(path, true);
@@ -115,9 +147,12 @@ namespace Nethereum.Generators.Tests.Common
             DotNet(args);
         }
 
+        public string TargetFramework { get; set; } = "netcoreapp2.1";
+
         private void CreateProjectFile(CodeGenLanguage language)
         {
-            DotNet($"new classLib -lang {language.ToDotNetCli()}");
+            DotNet($"new classLib -f {TargetFramework} -lang {language.ToDotNetCli()}");
+            ProjectFilePath = Path.Combine(TargetProjectFolder, ProjectName) + CodeGenLanguageExt.ProjectFileExtensions[language];
         }
 
         private void DotNet(string args, string workingFolderOverride = null)
@@ -157,6 +192,67 @@ namespace Nethereum.Generators.Tests.Common
             }
         }
 
+        public void AddAssemblyReferences(IEnumerable<string> assemblyPaths)
+        {
+                /*
+    <ItemGroup>
+    <Reference Include="Cryptlet.Messages">
+    <HintPath>..\..\..\Epiphyte\dotnet\Epiphyte\CryptletMessages\bin\Debug\netcoreapp2.0\Cryptlet.Messages.dll</HintPath>
+    </Reference>
+    </ItemGroup>
+     */
+
+                var projectDoc = new XmlDocument();
+                projectDoc.Load(ProjectFilePath);
+                var projectElement = projectDoc.DocumentElement;
+                var itemGroupElement = projectDoc.CreateElement("ItemGroup");
+                projectElement.AppendChild(itemGroupElement);
+                foreach (var dll in assemblyPaths)
+                {
+                    var referenceElement = projectDoc.CreateElement("Reference");
+                    itemGroupElement.AppendChild(referenceElement);
+                    var includeAttribute = projectDoc.CreateAttribute("Include");
+                    includeAttribute.Value = Path.GetFileNameWithoutExtension(dll);
+                    referenceElement.Attributes.Append(includeAttribute);
+                    var hintPathElement = projectDoc.CreateElement("HintPath");
+                    hintPathElement.InnerText = dll;
+                    referenceElement.AppendChild(hintPathElement);
+                }
+
+                projectDoc.Save(ProjectFilePath);
+        }
+
+        public void SetRootNamespaceInProject(string rootNamespace)
+        {
+            var projectDoc = new XmlDocument();
+            projectDoc.Load(ProjectFilePath);
+            var propertyGroupElement = projectDoc.DocumentElement.SelectSingleNode("PropertyGroup");
+            var rootNsElement = propertyGroupElement.SelectSingleNode("RootNamespace");
+            if (rootNsElement == null)
+            {
+                rootNsElement = projectDoc.CreateElement("RootNamespace");
+                propertyGroupElement.AppendChild(rootNsElement);
+            }
+
+            rootNsElement.InnerText = rootNamespace;
+            projectDoc.Save(ProjectFilePath);
+        }
+
+        public void SetAssemblyNameInProject(string rootNamespace)
+        {
+            var projectDoc = new XmlDocument();
+            projectDoc.Load(ProjectFilePath);
+            var propertyGroupElement = projectDoc.DocumentElement.SelectSingleNode("PropertyGroup");
+            var assemblyNameElement = propertyGroupElement.SelectSingleNode("AssemblyName");
+            if (assemblyNameElement == null)
+            {
+                assemblyNameElement = projectDoc.CreateElement("AssemblyName");
+                propertyGroupElement.AppendChild(assemblyNameElement);
+            }
+
+            assemblyNameElement.InnerText = rootNamespace;
+            projectDoc.Save(ProjectFilePath);
+        }
 
     }
 }
