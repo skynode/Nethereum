@@ -1,15 +1,16 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <Description>Nethereum.Signer.UnitTests Class Library</Description>
     <Authors>Juan Blanco</Authors>
-    <TargetFrameworks>netcoreapp2.0;net461;netcoreapp2.1</TargetFrameworks>
+    <TargetFrameworks>netcoreapp3.1;net461;netcoreapp2.1</TargetFrameworks>
     <AssemblyName>Nethereum.Signer.UnitTests</AssemblyName>
     <PackageId>Nethereum.Signer.UnitTests</PackageId>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Nethereum.ABI\Nethereum.ABI.csproj" />
+    <ProjectReference Include="..\Nethereum.Signer.EIP712\Nethereum.Signer.EIP712.csproj" />
     <ProjectReference Include="..\Nethereum.Signer\Nethereum.Signer.csproj" />
   </ItemGroup>
 

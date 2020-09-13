@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using System.Net.Sockets;
 using Common.Logging;
 using Nethereum.JsonRpc.Client;
+using Nethereum.JsonRpc.Client.RpcMessages;
 
 namespace Nethereum.JsonRpc.IpcClient
 {
@@ -31,7 +32,7 @@ namespace Nethereum.JsonRpc.IpcClient
                     if (!Task.Run(() =>
                         _socket.Connect(endPoint)).Wait(ConnectionTimeout))
                     {
-                        throw new RpcClientTimeoutException($"Rpc timeout afer {ConnectionTimeout} milliseconds");
+                        throw new RpcClientTimeoutException($"Rpc timeout afer {ConnectionTimeout.TotalMilliseconds} milliseconds");
                     }
                 }
             }
@@ -98,7 +99,7 @@ namespace Nethereum.JsonRpc.IpcClient
             return memoryStream;
         }
 
-        protected override async Task<TResponse> SendAsync<TRequest, TResponse>(TRequest request)
+        protected override async Task<RpcResponseMessage> SendAsync(RpcRequestMessage request, string route = null)
         {
             var logger = new RpcLogger(_log);
             try
@@ -113,7 +114,8 @@ namespace Nethereum.JsonRpc.IpcClient
 #if NET461
                     var val = client.Send(requestBytes, SocketFlags.None);
 #else
-                    var val = client.SendAsync(new ArraySegment<byte>(requestBytes, 0, requestBytes.Length), SocketFlags.None).Result;
+                    var val =
+ client.SendAsync(new ArraySegment<byte>(requestBytes, 0, requestBytes.Length), SocketFlags.None).Result;
 #endif
                     using (var memoryStream = ReceiveFullResponse(client))
                     {
@@ -122,18 +124,22 @@ namespace Nethereum.JsonRpc.IpcClient
                         using (var reader = new JsonTextReader(streamReader))
                         {
                             var serializer = JsonSerializer.Create(JsonSerializerSettings);
-                            var message = serializer.Deserialize<TResponse>(reader);
+                            var message = serializer.Deserialize<RpcResponseMessage>(reader);
                             logger.LogResponse(message);
                             return message;
                         }
                     }
                 }
-            
-            } catch (Exception ex) {
-                logger.LogException(ex);
-                throw new RpcClientUnknownException("Error occurred when trying to send ipc requests(s)", ex);
+
             }
-        }
+            catch (Exception ex)
+            {
+
+                var exception = new RpcClientUnknownException("Error occurred when trying to send ipc requests(s)", ex);
+                logger.LogException(exception);
+                throw exception;
+            }
+        }    
 
 #region IDisposable Support
 

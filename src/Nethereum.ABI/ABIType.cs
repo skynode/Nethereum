@@ -1,6 +1,6 @@
-using System;
 using Nethereum.ABI.Decoders;
 using Nethereum.ABI.Encoders;
+using System;
 
 namespace Nethereum.ABI
 {
@@ -79,13 +79,14 @@ namespace Nethereum.ABI
             return Decoder.Decode<T>(encoded);
         }
 
-        /// <summary>
-        ///     Encodes the value according to specific type rules
-        /// </summary>
-        /// <param name="value"> </param>
         public byte[] Encode(object value)
         {
             return Encoder.Encode(value);
+        }
+
+        public byte[] EncodePacked(object value)
+        {
+            return Encoder.EncodePacked(value);
         }
 
         public Type GetDefaultDecodingType()

@@ -2,7 +2,6 @@
 <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), dir.props))\dir.props" />
   <PropertyGroup>
     <Description>Nethereum JsonRpc.Client core library to use in conjunction with either the JsonRpc.RpcClient, the JsonRpc.IpcClient or other custom Rpc provider</Description>
-    <Copyright>Juan Blanco</Copyright>
     <AssemblyTitle>Nethereum.JsonRpc.Client</AssemblyTitle>
     <VersionPrefix>$(NethereumVersion)</VersionPrefix>
     <TargetFrameworks>$(DefaultFrameworksUnitySupport)</TargetFrameworks>
@@ -11,31 +10,19 @@
     <PackageTags>Json;RPC</PackageTags>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Condition=" '$(TargetFramework)' != 'net35'" Include="Newtonsoft.Json" Version="10.0.3" />
+<ItemGroup Condition=" '$(TargetFramework)' != 'net35'">
+  <PackageReference Include="Common.Logging.Core">
+    <Version>3.4.1</Version>
+  </PackageReference>
+</ItemGroup>
+
+  <PropertyGroup Condition=" '$(TargetFramework)' != 'net35' And '$(TargetUnityNet461AOT)' != 'true'">
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\..\NethereumKey.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+  <ItemGroup Condition=" '$(TargetFramework)' != 'net35' And '$(TargetUnityNet461AOT)' != 'true'">
+    <None Include="..\..\NethereumKey.snk" />
   </ItemGroup>
 
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net451' ">
-    <Reference Include="System" />
-    <Reference Include="Microsoft.CSharp" />
-  </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net451'">
-    <PackageReference Include="Common.Logging.Core">
-      <Version>3.4.1</Version>
-    </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard1.1'">
-    <PackageReference Include="Common.Logging.Core">
-      <Version>3.4.1</Version>
-    </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp2.1'">
-    <PackageReference Include="Common.Logging.Core">
-      <Version>3.4.1</Version>
-    </PackageReference>
-  </ItemGroup>
-  
 </Project>

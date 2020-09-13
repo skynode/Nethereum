@@ -3,6 +3,9 @@ using Nethereum.Hex.HexConvertors.Extensions;
 using Nethereum.Signer;
 using Nethereum.Util;
 using Nethereum.Web3.Accounts;
+using System;
+using System.Collections.Generic;
+using KeyPath = NBitcoin.KeyPath;
 
 namespace Nethereum.HdWallet
 {
@@ -10,6 +13,9 @@ namespace Nethereum.HdWallet
     {
         public const string DEFAULT_PATH = "m/44'/60'/0'/0/x";
         public const string ELECTRUM_LEDGER_PATH = "m/44'/60'/0'/x";
+        private Dictionary<int, ExtKey> nonHardenedKeys = new Dictionary<int, ExtKey>();
+        private Dictionary<int, ExtKey> hardenedKeys = new Dictionary<int, ExtKey>();
+        private Dictionary<int, EthECKey> ethereumKeys =  new Dictionary<int, EthECKey>();
 
         public Wallet(Wordlist wordList, WordCount wordCount, string seedPassword = null, string path = DEFAULT_PATH,
             IRandom random = null) : this(path, random)
@@ -26,12 +32,18 @@ namespace Nethereum.HdWallet
         public Wallet(byte[] seed, string path = DEFAULT_PATH, IRandom random = null) : this(path, random)
         {
             Seed = seed.ToHex();
+            var keyPath = new KeyPath(GetMasterPath());
+            _masterKey = new ExtKey(Seed).Derive(keyPath);
         }
 
         private Wallet(string path = DEFAULT_PATH, IRandom random = null)
         {
             Path = path;
+#if NETCOREAPP2_1 || NETCOREAPP3_1 || NETSTANDARD2_0 
+            if (random == null) random = new RandomNumberGeneratorRandom();
+#else
             if (random == null) random = new SecureRandom();
+#endif
             Random = random;
         }
 
@@ -48,12 +60,16 @@ namespace Nethereum.HdWallet
 
         public string Path { get; }
 
+        private ExtKey _masterKey;
+
         private void InitialiseSeed(Wordlist wordlist, WordCount wordCount, string seedPassword = null)
         {
             var mneumonic = new Mnemonic(wordlist, wordCount);
             Seed = mneumonic.DeriveSeed(seedPassword).ToHex();
             Words = mneumonic.Words;
             IsMneumonicValidChecksum = mneumonic.IsValidChecksum;
+            var keyPath = new KeyPath(GetMasterPath());
+            _masterKey = new ExtKey(Seed).Derive(keyPath);
         }
 
         private void InitialiseSeed(string words, string seedPassword = null)
@@ -62,6 +78,8 @@ namespace Nethereum.HdWallet
             Seed = mneumonic.DeriveSeed(seedPassword).ToHex();
             Words = mneumonic.Words;
             IsMneumonicValidChecksum = mneumonic.IsValidChecksum;
+            var keyPath = new KeyPath(GetMasterPath());
+            _masterKey = new ExtKey(Seed).Derive(keyPath);
         }
 
         private string GetIndexPath(int index)
@@ -69,23 +87,68 @@ namespace Nethereum.HdWallet
             return Path.Replace("x", index.ToString());
         }
 
-        private ExtKey GetKey(int index)
+        private string GetMasterPath()
         {
-            var masterKey = new ExtKey(Seed);
-            var keyPath = new KeyPath(GetIndexPath(index));
-            return masterKey.Derive(keyPath);
+            return Path.Replace("/x", "");
         }
 
-        private EthECKey GetEthereumKey(int index)
+        public ExtKey GetMasterExtKey()
         {
+           return _masterKey;
+        }
+
+        public ExtPubKey GetMasterExtPubKey()
+        {
+            return GetMasterExtKey().Neuter();
+        }
+
+        public PublicWallet GetMasterPublicWallet()
+        {
+            return new PublicWallet(GetMasterExtPubKey());
+        }
+
+        public ExtKey GetExtKey(int index, bool hardened = false)
+        {
+            if (!hardened && nonHardenedKeys.ContainsKey(index)) return nonHardenedKeys[index];
+            if (hardened && hardenedKeys.ContainsKey(index)) return hardenedKeys[index];
+            if (hardened)
+            {
+                hardenedKeys.Add(index,_masterKey.Derive(index, true));
+                return hardenedKeys[index];
+            }
+            else
+            {
+                nonHardenedKeys.Add(index,_masterKey.Derive(index, false));
+                return nonHardenedKeys[index];
+            }
+            
+        }
+
+        public ExtPubKey GetExtPubKey(int index, bool hardened = false)
+        {
+          
+            var key = GetExtKey(index, hardened);
+            return key.Neuter();
+        }
+
+        public EthECKey GetEthereumKey(int index)
+        {
+            if (ethereumKeys.ContainsKey(index)) return ethereumKeys[index];
             var privateKey = GetPrivateKey(index);
-            return new EthECKey(privateKey, true);
+            ethereumKeys.Add(index, new EthECKey(privateKey, true));
+            return ethereumKeys[index];
         }
 
         public byte[] GetPrivateKey(int index)
         {
-            var key = GetKey(index);
+            var key = GetExtKey(index);
             return key.PrivateKey.ToBytes();
+        }
+
+        public byte[] GetPublicKey(int index)
+        {
+            var key = GetEthereumKey(index);
+            return key.GetPubKey();
         }
 
         public byte[] GetPrivateKey(int startIndex, string address, int maxIndexSearch = 20)
@@ -126,9 +189,9 @@ namespace Nethereum.HdWallet
 
         public Account GetAccount(int index)
         {
-            var privateyKey = GetPrivateKey(index);
-            if (privateyKey != null)
-                return new Account(privateyKey);
+            var key = GetEthereumKey(index);
+            if (key != null)
+                return new Account(key);
             return null;
         }
     }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Nethereum.ABI.Decoders;
 using Nethereum.ABI.Model;
 
 namespace Nethereum.ABI.FunctionEncoding.Attributes
@@ -58,7 +59,7 @@ namespace Nethereum.ABI.FunctionEncoding.Attributes
             if (EventAttribute.IsEventType(contractMessageType))
             {
                 var eventAttribute = EventAttribute.GetAttribute(contractMessageType);
-                var eventABI = new EventABI(eventAttribute.Name);
+                var eventABI = new EventABI(eventAttribute.Name, eventAttribute.IsAnonymous);
                 eventABI.InputParameters = ExtractParametersFromAttributes(contractMessageType);
                 return eventABI;
             }
@@ -73,34 +74,51 @@ namespace Nethereum.ABI.FunctionEncoding.Attributes
             foreach (var property in properties)
             {
                 var parameterAttribute = property.GetCustomAttribute<ParameterAttribute>(true);
-                if (parameterAttribute.Parameter.ABIType is TupleType tupleType)
-                {
-                    InitTupleComponentsFromTypeAttributes(property.PropertyType, tupleType);
-                }
+                
+                InitTupleComponentsFromTypeAttributes(property.PropertyType, parameterAttribute.Parameter.ABIType);
+                
                 parameters.Add(parameterAttribute.Parameter);   
             }
             return parameters.ToArray();
         }
 
 
-        public void InitTupleComponentsFromTypeAttributes(Type type, TupleType parameter)
+        public void InitTupleComponentsFromTypeAttributes(Type type, ABIType abiType)
         {
-            var properties = PropertiesExtractor.GetPropertiesWithParameterAttribute(type);
-            var parameters = new List<Parameter>();
+            if (abiType is TupleType abiTupleType)
+            {
+                var properties = PropertiesExtractor.GetPropertiesWithParameterAttribute(type);
+                var parameters = new List<Parameter>();
                 var parameterObjects = new List<Parameter>();
 
-            foreach (var property in properties)
-             {
+                foreach (var property in properties)
+                {
                     var parameterAttribute = property.GetCustomAttribute<ParameterAttribute>(true);
                     parameterAttribute.Parameter.DecodedType = property.PropertyType;
-                    if (parameterAttribute.Parameter.ABIType is TupleType tupleType)
-                    {
-                        InitTupleComponentsFromTypeAttributes(property.PropertyType, tupleType);
-                    }
-                   
+                    InitTupleComponentsFromTypeAttributes(property.PropertyType, parameterAttribute.Parameter.ABIType);
+ 
                     parameterObjects.Add(parameterAttribute.Parameter);
+                }
+                abiTupleType.SetComponents(parameterObjects.ToArray());
             }
-            parameter.SetComponents(parameterObjects.ToArray());
+
+            var abiArrayType = abiType as ArrayType;
+
+            while (abiArrayType != null)
+            {
+                var arrayListType = ArrayTypeDecoder.GetIListElementType(type);
+                if(arrayListType == null) throw new Exception("Only types that implement IList<T> are supported for encoding");
+
+                if (abiArrayType.ElementType is TupleType arrayTupleType)
+                {
+                    InitTupleComponentsFromTypeAttributes(arrayListType, arrayTupleType);
+                    abiArrayType = null;
+                }
+                else
+                {
+                    abiArrayType = abiArrayType.ElementType as ArrayType;
+                }
+            }
         }
     }
 }

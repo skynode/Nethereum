@@ -1,4 +1,5 @@
 using Nethereum.Hex.HexTypes;
+using Nethereum.Util;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -62,8 +63,25 @@ namespace Nethereum.RPC.Eth.DTOs
 
         public bool? HasErrors()
         {
-            if (Status == null) return null;
+            if (Status?.HexValue == null) return null;
             return Status.Value == 0;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is TransactionReceipt val)
+            {
+                return TransactionHash == val.TransactionHash &&
+                       TransactionIndex == val.TransactionIndex &&
+                       BlockHash == val.BlockHash &&
+                       BlockNumber == val.BlockNumber &&
+                       CumulativeGasUsed == val.CumulativeGasUsed &&
+                       GasUsed == val.GasUsed &&
+                       ContractAddress.IsTheSameAddress(val.ContractAddress) &&
+                       Status == val.Status;
+            }
+
+            return false;
         }
     }
 }

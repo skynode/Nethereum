@@ -20,14 +20,22 @@ declare module Nethereum {
             get_BaseOutputPath(): string;
             get_PathDelimiter(): string;
             get_CodeGenLanguage(): Core.CodeGenLanguage;
+            GenerateAllMessagesFileAndService(): Core.GeneratedFile[];
+            GenerateAllMessages(): Core.GeneratedFile;
             GenerateAll(): Core.GeneratedFile[];
-            GenerateService(): Core.GeneratedFile;
+            GenerateService(singleMessagesFile?: boolean): Core.GeneratedFile;
             GenerateAllCQSMessages(): System.Collections.Generic.List$1<Core.GeneratedFile>;
             GenerateAllFunctionDTOs(): System.Collections.Generic.List$1<Core.GeneratedFile>;
+            GenerateAllStructs(): System.Collections.Generic.List$1<Core.GeneratedFile>;
+            GetAllStructTypeGenerators(): System.Collections.Generic.List$1<DTOs.StructTypeGenerator>;
+            GetAllFunctionDTOsGenerators(): System.Collections.Generic.List$1<DTOs.FunctionOutputDTOGenerator>;
             GenerateAllEventDTOs(): System.Collections.Generic.List$1<Core.GeneratedFile>;
+            GetllEventDTOGenerators(): System.Collections.Generic.List$1<DTOs.EventDTOGenerator>;
             GeneratCQSFunctionMessages(): System.Collections.Generic.List$1<Core.GeneratedFile>;
+            GetAllCQSFunctionMessageGenerators(): System.Collections.Generic.List$1<CQS.FunctionCQSMessageGenerator>;
             get_AddRootNamespaceOnVbProjectsToImportStatements(): boolean;
             set_AddRootNamespaceOnVbProjectsToImportStatements(value: boolean): void;
+            GetCQSMessageDeploymentGenerator(): CQS.ContractDeploymentCQSMessageGenerator;
             GeneratCQSMessageDeployment(): Core.GeneratedFile;
             GetFullNamespace(namespace: string): string;
             GetFullPath(namespace: string): string;
@@ -45,6 +53,8 @@ declare module Nethereum {
             get_ProjectFileName(): string;
             get_CodeGenLanguage(): Core.CodeGenLanguage;
             GenerateFileContent(outputPath: string): Core.GeneratedFile;
+            get_NethereumWeb3Version(): string;
+            set_NethereumWeb3Version(value: string): void;
         }
         export interface NetStandardLibraryGeneratorTypeFunc extends TypeFunction {
             (): NetStandardLibraryGeneratorTypeFunc;
@@ -61,6 +71,7 @@ declare module Nethereum {
                 GetSingleAbiReturnType(): string;
                 IsMultipleOutput(): boolean;
                 IsSingleOutput(): boolean;
+                HasNoInputParameters(): boolean;
                 HasNoReturn(): boolean;
                 IsTransaction(): boolean;
             }
@@ -77,6 +88,7 @@ declare module Nethereum {
                 GetPropertyName$1(parameterDirection: ParameterDirection): string;
                 GetVariableName$1(name: string, order: int): string;
                 GetPropertyName$2(name: string, order: int, parameterDirection?: ParameterDirection): string;
+                GetStructTypeClassName(): string;
             }
             export interface ParameterABIModelTypeFunc extends TypeFunction {
                 (): ParameterABIModelTypeFunc;
@@ -115,7 +127,7 @@ declare module Nethereum {
 
             // Nethereum.Generators.Core.ABITypeToDotNetTypeBase
             export interface ABITypeToDotNetTypeBase extends System.Object, ITypeConvertor {
-                Convert(typeName: string, outputArrayAsList?: boolean): string;
+                Convert(typeName: string, dotnetClassName?: string, outputArrayAsList?: boolean): string;
             }
             export interface ABITypeToDotNetTypeBaseTypeFunc extends TypeFunction {
                 (): ABITypeToDotNetTypeBaseTypeFunc;
@@ -146,7 +158,9 @@ declare module Nethereum {
             const ABITypeToVBType: ABITypeToVBTypeTypeFunc;
 
             // Nethereum.Generators.Core.ClassGeneratorBase<TClassTemplate, TClassModel>
-            export interface ClassGeneratorBase$2<TClassTemplate, TClassModel> extends System.Object, IFileGenerator, IGenerator {
+            export interface ClassGeneratorBase$2<TClassTemplate, TClassModel> extends System.Object, IFileGenerator, IGenerator, IClassGenerator {
+                get_ClassModel(): TClassModel;
+                set_ClassModel(value: TClassModel): void;
                 GenerateFileContent$1(outputPath: string): GeneratedFile;
                 GenerateFileContent(): string;
                 GetFileName(): string;
@@ -198,6 +212,23 @@ declare module Nethereum {
             }
             const CommonGenerators: CommonGeneratorsTypeFunc;
 
+            // Nethereum.Generators.Core.FileModel
+            export interface FileModel extends System.Object, IFileModel {
+                get_Name(): string;
+                get_CodeGenLanguage(): CodeGenLanguage;
+                set_CodeGenLanguage(value: CodeGenLanguage): void;
+                GetFileName(): string;
+                get_Namespace(): string;
+                get_NamespaceDependencies(): System.Collections.Generic.List$1<string>;
+            }
+            export interface FileModelTypeFunc extends TypeFunction {
+                (): FileModelTypeFunc;
+                prototype: FileModel;
+                new (namespace: string, name: string): FileModel;
+                ctor: { new (namespace: string, name: string): FileModel; };
+            }
+            const FileModel: FileModelTypeFunc;
+
             // Nethereum.Generators.Core.GeneratedFile
             export interface GeneratedFile extends System.Object {
                 get_GeneratedCode(): string;
@@ -212,15 +243,26 @@ declare module Nethereum {
             }
             const GeneratedFile: GeneratedFileTypeFunc;
 
+            // Nethereum.Generators.Core.IClassGenerator
+            export interface IClassGenerator {
+                Nethereum$Generators$Core$IClassGenerator$GenerateClass(): string;
+            }
+            const IClassGenerator: TypeFunction;
+
             // Nethereum.Generators.Core.IClassModel
-            export interface IClassModel {
+            export interface IClassModel extends IFileModel {
                 Nethereum$Generators$Core$IClassModel$GetTypeName(): string;
-                Nethereum$Generators$Core$IClassModel$GetFileName(): string;
                 Nethereum$Generators$Core$IClassModel$GetVariableName(): string;
-                Nethereum$Generators$Core$IClassModel$get_Namespace(): string;
-                Nethereum$Generators$Core$IClassModel$get_NamespaceDependencies(): System.Collections.Generic.List$1<string>;
             }
             const IClassModel: TypeFunction;
+
+            // Nethereum.Generators.Core.IFileModel
+            export interface IFileModel {
+                Nethereum$Generators$Core$IFileModel$GetFileName(): string;
+                Nethereum$Generators$Core$IFileModel$get_Namespace(): string;
+                Nethereum$Generators$Core$IFileModel$get_NamespaceDependencies(): System.Collections.Generic.List$1<string>;
+            }
+            const IFileModel: TypeFunction;
 
             // Nethereum.Generators.Core.IClassTemplate
             export interface IClassTemplate {
@@ -253,7 +295,7 @@ declare module Nethereum {
 
             // Nethereum.Generators.Core.ITypeConvertor
             export interface ITypeConvertor {
-                Nethereum$Generators$Core$ITypeConvertor$Convert(typeName: string, outputArrayAsList?: boolean): string;
+                Nethereum$Generators$Core$ITypeConvertor$Convert(typeName: string, dotnetClassName: string, outputArrayAsList?: boolean): string;
             }
             const ITypeConvertor: TypeFunction;
 
@@ -273,6 +315,21 @@ declare module Nethereum {
                 ctor: { new (from: MFrom, to: MTo, parameterMaps: System.Collections.Generic.List$1<ParameterMap$2<PFrom, PTo>>): MessageMap$4<MFrom, MTo, PFrom, PTo>; };
             }
             export function MessageMap$4<MFrom, MTo, PFrom, PTo>(MFrom: TypeArg<MFrom>, MTo: TypeArg<MTo>, PFrom: TypeArg<PFrom>, PTo: TypeArg<PTo>): MessageMap$4TypeFunc<MFrom, MTo, PFrom, PTo>;
+
+            // Nethereum.Generators.Core.MultipleClassGeneratorBase<TMultipleClassFileTemplate, TMultipleClassFileModel>
+            export interface MultipleClassGeneratorBase$2<TMultipleClassFileTemplate, TMultipleClassFileModel> extends System.Object, IFileGenerator, IGenerator {
+                GenerateFileContent$1(outputPath: string): GeneratedFile;
+                GenerateFileContent(): string;
+                GetFileName(): string;
+                GenerateClass(): string;
+            }
+            export interface MultipleClassGeneratorBase$2TypeFunc<TMultipleClassFileTemplate, TMultipleClassFileModel> extends TypeFunction {
+                (): MultipleClassGeneratorBase$2TypeFunc<TMultipleClassFileTemplate, TMultipleClassFileModel>;
+                prototype: MultipleClassGeneratorBase$2<TMultipleClassFileTemplate, TMultipleClassFileModel>;
+                new (): MultipleClassGeneratorBase$2<TMultipleClassFileTemplate, TMultipleClassFileModel>;
+                ctor: { new (): MultipleClassGeneratorBase$2<TMultipleClassFileTemplate, TMultipleClassFileModel>; };
+            }
+            export function MultipleClassGeneratorBase$2<TMultipleClassFileTemplate, TMultipleClassFileModel>(TMultipleClassFileTemplate: TypeArg<TMultipleClassFileTemplate>, TMultipleClassFileModel: TypeArg<TMultipleClassFileModel>): MultipleClassGeneratorBase$2TypeFunc<TMultipleClassFileTemplate, TMultipleClassFileModel>;
 
             // Nethereum.Generators.Core.Parameter
             export interface Parameter extends System.Object {
@@ -380,7 +437,7 @@ declare module Nethereum {
             const SpaceUtils: SpaceUtilsTypeFunc;
 
             // Nethereum.Generators.Core.TypeMessageModel
-            export interface TypeMessageModel extends System.Object, IClassModel {
+            export interface TypeMessageModel extends System.Object, IClassModel, IFileModel {
                 get_Namespace(): string;
                 get_Name(): string;
                 get_ClassNameSuffix(): string;
@@ -454,6 +511,8 @@ declare module Nethereum {
                 set_Constructor(value: ConstructorABI): void;
                 get_Events(): EventABI[];
                 set_Events(value: EventABI[]): void;
+                get_Structs(): StructABI[];
+                set_Structs(value: StructABI[]): void;
             }
             export interface ContractABITypeFunc extends TypeFunction {
                 (): ContractABITypeFunc;
@@ -498,390 +557,62 @@ declare module Nethereum {
 
             // Nethereum.Generators.Model.ParameterABI
             export interface ParameterABI extends Core.Parameter {
+                get_StructType(): string;
+                set_StructType(value: string): void;
                 get_Indexed(): boolean;
                 set_Indexed(value: boolean): void;
             }
             export interface ParameterABITypeFunc extends TypeFunction {
                 (): ParameterABITypeFunc;
                 prototype: ParameterABI;
-                ctor$1: { new (type: string, name?: string, order?: int): ParameterABI; };
+                ctor$1: { new (type: string, name?: string, order?: int, structType?: string): ParameterABI; };
                 new (type: string, order: int): ParameterABI;
                 ctor: { new (type: string, order: int): ParameterABI; };
             }
             const ParameterABI: ParameterABITypeFunc;
-        }
-        module CQS {
-            // Nethereum.Generators.CQS.ClassFileTemplate
-            export interface ClassFileTemplate extends System.Object {
-                get_ClassModel(): Core.IClassModel;
-                get_ClassTemplate(): Core.IClassTemplate;
-                GenerateNamespaceDependencies(): string;
-                GenerateNamespaceDependency(namespaceName: string): string;
-                GenerateFullClass(): string;
-            }
-            export interface ClassFileTemplateTypeFunc extends TypeFunction {
-                (): ClassFileTemplateTypeFunc;
-                prototype: ClassFileTemplate;
-            }
-            const ClassFileTemplate: ClassFileTemplateTypeFunc;
 
-            // Nethereum.Generators.CQS.ClassTemplateBase<TModel>
-            export interface ClassTemplateBase$1<TModel> extends System.Object, Core.IClassTemplate {
-                GenerateClass(): string;
-                GenerateFullClass(): string;
+            // Nethereum.Generators.Model.StructABI
+            export interface StructABI extends System.Object, Core.IMessage$1<ParameterABI> {
+                get_InputParameters(): ParameterABI[];
+                set_InputParameters(value: ParameterABI[]): void;
+                get_Name(): string;
+                set_Name(value: string): void;
             }
-            export interface ClassTemplateBase$1TypeFunc<TModel> extends TypeFunction {
-                (): ClassTemplateBase$1TypeFunc<TModel>;
-                prototype: ClassTemplateBase$1<TModel>;
+            export interface StructABITypeFunc extends TypeFunction {
+                (): StructABITypeFunc;
+                prototype: StructABI;
+                new (name: string): StructABI;
+                ctor: { new (name: string): StructABI; };
             }
-            export function ClassTemplateBase$1<TModel>(TModel: TypeArg<TModel>): ClassTemplateBase$1TypeFunc<TModel>;
-
-            // Nethereum.Generators.CQS.CSharpClassFileTemplate
-            export interface CSharpClassFileTemplate extends ClassFileTemplate {
-            }
-            export interface CSharpClassFileTemplateTypeFunc extends TypeFunction {
-                (): CSharpClassFileTemplateTypeFunc;
-                prototype: CSharpClassFileTemplate;
-                new (classModel: Core.IClassModel, classTemplate: Core.IClassTemplate): CSharpClassFileTemplate;
-                ctor: { new (classModel: Core.IClassModel, classTemplate: Core.IClassTemplate): CSharpClassFileTemplate; };
-            }
-            const CSharpClassFileTemplate: CSharpClassFileTemplateTypeFunc;
-
-            // Nethereum.Generators.CQS.FSharpClassFileTemplate
-            export interface FSharpClassFileTemplate extends ClassFileTemplate {
-            }
-            export interface FSharpClassFileTemplateTypeFunc extends TypeFunction {
-                (): FSharpClassFileTemplateTypeFunc;
-                prototype: FSharpClassFileTemplate;
-                new (classModel: Core.IClassModel, classTemplate: Core.IClassTemplate): FSharpClassFileTemplate;
-                ctor: { new (classModel: Core.IClassModel, classTemplate: Core.IClassTemplate): FSharpClassFileTemplate; };
-            }
-            const FSharpClassFileTemplate: FSharpClassFileTemplateTypeFunc;
-
-            // Nethereum.Generators.CQS.VbClassFileTemplate
-            export interface VbClassFileTemplate extends ClassFileTemplate {
-            }
-            export interface VbClassFileTemplateTypeFunc extends TypeFunction {
-                (): VbClassFileTemplateTypeFunc;
-                prototype: VbClassFileTemplate;
-                new (classModel: Core.IClassModel, classTemplate: Core.IClassTemplate): VbClassFileTemplate;
-                ctor: { new (classModel: Core.IClassModel, classTemplate: Core.IClassTemplate): VbClassFileTemplate; };
-            }
-            const VbClassFileTemplate: VbClassFileTemplateTypeFunc;
-
-            // Nethereum.Generators.CQS.ContractDeploymentCQSMessageGenerator
-            export interface ContractDeploymentCQSMessageGenerator extends Core.ClassGeneratorBase$2<ClassTemplateBase$1<ContractDeploymentCQSMessageModel>, ContractDeploymentCQSMessageModel>, Core.IFileGenerator, Core.IGenerator {
-                InitialiseTemplate(codeGenLanguage: Core.CodeGenLanguage): void;
-            }
-            export interface ContractDeploymentCQSMessageGeneratorTypeFunc extends TypeFunction {
-                (): ContractDeploymentCQSMessageGeneratorTypeFunc;
-                prototype: ContractDeploymentCQSMessageGenerator;
-                new (abi: Model.ConstructorABI, namespaceName: string, byteCode: string, contractName: string, codeGenLanguage: Core.CodeGenLanguage): ContractDeploymentCQSMessageGenerator;
-                ctor: { new (abi: Model.ConstructorABI, namespaceName: string, byteCode: string, contractName: string, codeGenLanguage: Core.CodeGenLanguage): ContractDeploymentCQSMessageGenerator; };
-            }
-            const ContractDeploymentCQSMessageGenerator: ContractDeploymentCQSMessageGeneratorTypeFunc;
-
-            // Nethereum.Generators.CQS.ContractDeploymentCQSMessageModel
-            export interface ContractDeploymentCQSMessageModel extends Core.TypeMessageModel, Core.IClassModel {
-                get_ConstructorABI(): Model.ConstructorABI;
-                get_ByteCode(): string;
-            }
-            export interface ContractDeploymentCQSMessageModelTypeFunc extends TypeFunction {
-                (): ContractDeploymentCQSMessageModelTypeFunc;
-                prototype: ContractDeploymentCQSMessageModel;
-                new (constructorABI: Model.ConstructorABI, namespace: string, byteCode: string, contractName: string): ContractDeploymentCQSMessageModel;
-                ctor: { new (constructorABI: Model.ConstructorABI, namespace: string, byteCode: string, contractName: string): ContractDeploymentCQSMessageModel; };
-            }
-            const ContractDeploymentCQSMessageModel: ContractDeploymentCQSMessageModelTypeFunc;
-
-            // Nethereum.Generators.CQS.FunctionCQSMessageGenerator
-            export interface FunctionCQSMessageGenerator extends Core.ClassGeneratorBase$2<ClassTemplateBase$1<FunctionCQSMessageModel>, FunctionCQSMessageModel>, Core.IFileGenerator, Core.IGenerator {
-                get_FunctionABI(): Model.FunctionABI;
-            }
-            export interface FunctionCQSMessageGeneratorTypeFunc extends TypeFunction {
-                (): FunctionCQSMessageGeneratorTypeFunc;
-                prototype: FunctionCQSMessageGenerator;
-                new (functionABI: Model.FunctionABI, namespace: string, namespaceFunctionOutput: string, codeGenLanguage: Core.CodeGenLanguage): FunctionCQSMessageGenerator;
-                ctor: { new (functionABI: Model.FunctionABI, namespace: string, namespaceFunctionOutput: string, codeGenLanguage: Core.CodeGenLanguage): FunctionCQSMessageGenerator; };
-            }
-            const FunctionCQSMessageGenerator: FunctionCQSMessageGeneratorTypeFunc;
-
-            // Nethereum.Generators.CQS.FunctionCQSMessageModel
-            export interface FunctionCQSMessageModel extends Core.TypeMessageModel, Core.IClassModel {
-                get_FunctionABI(): Model.FunctionABI;
-            }
-            export interface FunctionCQSMessageModelTypeFunc extends TypeFunction {
-                (): FunctionCQSMessageModelTypeFunc;
-                prototype: FunctionCQSMessageModel;
-                new (functionABI: Model.FunctionABI, namespace: string): FunctionCQSMessageModel;
-                ctor: { new (functionABI: Model.FunctionABI, namespace: string): FunctionCQSMessageModel; };
-            }
-            const FunctionCQSMessageModel: FunctionCQSMessageModelTypeFunc;
-
-            // Nethereum.Generators.CQS.ContractDeploymentCQSMessageCSharpTemplate
-            export interface ContractDeploymentCQSMessageCSharpTemplate extends ClassTemplateBase$1<ContractDeploymentCQSMessageModel>, Core.IClassTemplate {
-            }
-            export interface ContractDeploymentCQSMessageCSharpTemplateTypeFunc extends TypeFunction {
-                (): ContractDeploymentCQSMessageCSharpTemplateTypeFunc;
-                prototype: ContractDeploymentCQSMessageCSharpTemplate;
-                new (model: ContractDeploymentCQSMessageModel): ContractDeploymentCQSMessageCSharpTemplate;
-                ctor: { new (model: ContractDeploymentCQSMessageModel): ContractDeploymentCQSMessageCSharpTemplate; };
-            }
-            const ContractDeploymentCQSMessageCSharpTemplate: ContractDeploymentCQSMessageCSharpTemplateTypeFunc;
-
-            // Nethereum.Generators.CQS.FunctionCQSMessageCSharpTemplate
-            export interface FunctionCQSMessageCSharpTemplate extends ClassTemplateBase$1<FunctionCQSMessageModel>, Core.IClassTemplate {
-            }
-            export interface FunctionCQSMessageCSharpTemplateTypeFunc extends TypeFunction {
-                (): FunctionCQSMessageCSharpTemplateTypeFunc;
-                prototype: FunctionCQSMessageCSharpTemplate;
-                new (model: FunctionCQSMessageModel, functionOutputDTOModel: DTOs.FunctionOutputDTOModel, functionABIModel: Core.FunctionABIModel): FunctionCQSMessageCSharpTemplate;
-                ctor: { new (model: FunctionCQSMessageModel, functionOutputDTOModel: DTOs.FunctionOutputDTOModel, functionABIModel: Core.FunctionABIModel): FunctionCQSMessageCSharpTemplate; };
-            }
-            const FunctionCQSMessageCSharpTemplate: FunctionCQSMessageCSharpTemplateTypeFunc;
-
-            // Nethereum.Generators.CQS.ContractDeploymentCQSMessageFSharpTemplate
-            export interface ContractDeploymentCQSMessageFSharpTemplate extends ClassTemplateBase$1<ContractDeploymentCQSMessageModel>, Core.IClassTemplate {
-            }
-            export interface ContractDeploymentCQSMessageFSharpTemplateTypeFunc extends TypeFunction {
-                (): ContractDeploymentCQSMessageFSharpTemplateTypeFunc;
-                prototype: ContractDeploymentCQSMessageFSharpTemplate;
-                new (model: ContractDeploymentCQSMessageModel): ContractDeploymentCQSMessageFSharpTemplate;
-                ctor: { new (model: ContractDeploymentCQSMessageModel): ContractDeploymentCQSMessageFSharpTemplate; };
-            }
-            const ContractDeploymentCQSMessageFSharpTemplate: ContractDeploymentCQSMessageFSharpTemplateTypeFunc;
-
-            // Nethereum.Generators.CQS.FunctionCQSMessageFSharpTemplate
-            export interface FunctionCQSMessageFSharpTemplate extends ClassTemplateBase$1<FunctionCQSMessageModel>, Core.IClassTemplate {
-            }
-            export interface FunctionCQSMessageFSharpTemplateTypeFunc extends TypeFunction {
-                (): FunctionCQSMessageFSharpTemplateTypeFunc;
-                prototype: FunctionCQSMessageFSharpTemplate;
-                new (model: FunctionCQSMessageModel, functionOutputDTOModel: DTOs.FunctionOutputDTOModel, functionABIModel: Core.FunctionABIModel): FunctionCQSMessageFSharpTemplate;
-                ctor: { new (model: FunctionCQSMessageModel, functionOutputDTOModel: DTOs.FunctionOutputDTOModel, functionABIModel: Core.FunctionABIModel): FunctionCQSMessageFSharpTemplate; };
-            }
-            const FunctionCQSMessageFSharpTemplate: FunctionCQSMessageFSharpTemplateTypeFunc;
-
-            // Nethereum.Generators.CQS.ContractDeploymentCQSMessageVbTemplate
-            export interface ContractDeploymentCQSMessageVbTemplate extends ClassTemplateBase$1<ContractDeploymentCQSMessageModel>, Core.IClassTemplate {
-            }
-            export interface ContractDeploymentCQSMessageVbTemplateTypeFunc extends TypeFunction {
-                (): ContractDeploymentCQSMessageVbTemplateTypeFunc;
-                prototype: ContractDeploymentCQSMessageVbTemplate;
-                new (model: ContractDeploymentCQSMessageModel): ContractDeploymentCQSMessageVbTemplate;
-                ctor: { new (model: ContractDeploymentCQSMessageModel): ContractDeploymentCQSMessageVbTemplate; };
-            }
-            const ContractDeploymentCQSMessageVbTemplate: ContractDeploymentCQSMessageVbTemplateTypeFunc;
-
-            // Nethereum.Generators.CQS.FunctionCQSMessageVbTemplate
-            export interface FunctionCQSMessageVbTemplate extends ClassTemplateBase$1<FunctionCQSMessageModel>, Core.IClassTemplate {
-            }
-            export interface FunctionCQSMessageVbTemplateTypeFunc extends TypeFunction {
-                (): FunctionCQSMessageVbTemplateTypeFunc;
-                prototype: FunctionCQSMessageVbTemplate;
-                new (model: FunctionCQSMessageModel, functionOutputDTOModel: DTOs.FunctionOutputDTOModel, functionABIModel: Core.FunctionABIModel): FunctionCQSMessageVbTemplate;
-                ctor: { new (model: FunctionCQSMessageModel, functionOutputDTOModel: DTOs.FunctionOutputDTOModel, functionABIModel: Core.FunctionABIModel): FunctionCQSMessageVbTemplate; };
-            }
-            const FunctionCQSMessageVbTemplate: FunctionCQSMessageVbTemplateTypeFunc;
-        }
-        module DTOs {
-            // Nethereum.Generators.DTOs.EventDTOGenerator
-            export interface EventDTOGenerator extends Core.ClassGeneratorBase$2<CQS.ClassTemplateBase$1<EventDTOModel>, EventDTOModel>, Core.IFileGenerator, Core.IGenerator {
-                InitialiseTemplate(codeGenLanguage: Core.CodeGenLanguage): void;
-            }
-            export interface EventDTOGeneratorTypeFunc extends TypeFunction {
-                (): EventDTOGeneratorTypeFunc;
-                prototype: EventDTOGenerator;
-                new (abi: Model.EventABI, namespace: string, codeGenLanguage: Core.CodeGenLanguage): EventDTOGenerator;
-                ctor: { new (abi: Model.EventABI, namespace: string, codeGenLanguage: Core.CodeGenLanguage): EventDTOGenerator; };
-            }
-            const EventDTOGenerator: EventDTOGeneratorTypeFunc;
-
-            // Nethereum.Generators.DTOs.EventDTOModel
-            export interface EventDTOModel extends Core.TypeMessageModel, Core.IClassModel {
-                get_EventABI(): Model.EventABI;
-                CanGenerateOutputDTO(): boolean;
-            }
-            export interface EventDTOModelTypeFunc extends TypeFunction {
-                (): EventDTOModelTypeFunc;
-                prototype: EventDTOModel;
-                new (eventABI: Model.EventABI, namespace: string): EventDTOModel;
-                ctor: { new (eventABI: Model.EventABI, namespace: string): EventDTOModel; };
-            }
-            const EventDTOModel: EventDTOModelTypeFunc;
-
-            // Nethereum.Generators.DTOs.FunctionOutputDTOGenerator
-            export interface FunctionOutputDTOGenerator extends Core.ClassGeneratorBase$2<CQS.ClassTemplateBase$1<FunctionOutputDTOModel>, FunctionOutputDTOModel>, Core.IFileGenerator, Core.IGenerator {
-                InitialiseTemplate(codeGenLanguage: Core.CodeGenLanguage): void;
-            }
-            export interface FunctionOutputDTOGeneratorTypeFunc extends TypeFunction {
-                (): FunctionOutputDTOGeneratorTypeFunc;
-                prototype: FunctionOutputDTOGenerator;
-                new (functionABI: Model.FunctionABI, namespace: string, codeGenLanguage: Core.CodeGenLanguage): FunctionOutputDTOGenerator;
-                ctor: { new (functionABI: Model.FunctionABI, namespace: string, codeGenLanguage: Core.CodeGenLanguage): FunctionOutputDTOGenerator; };
-            }
-            const FunctionOutputDTOGenerator: FunctionOutputDTOGeneratorTypeFunc;
-
-            // Nethereum.Generators.DTOs.FunctionOutputDTOModel
-            export interface FunctionOutputDTOModel extends Core.TypeMessageModel, Core.IClassModel {
-                get_FunctionABI(): Model.FunctionABI;
-                CanGenerateOutputDTO(): boolean;
-            }
-            export interface FunctionOutputDTOModelTypeFunc extends TypeFunction {
-                (): FunctionOutputDTOModelTypeFunc;
-                prototype: FunctionOutputDTOModel;
-                new (functionABI: Model.FunctionABI, namespace: string): FunctionOutputDTOModel;
-                ctor: { new (functionABI: Model.FunctionABI, namespace: string): FunctionOutputDTOModel; };
-            }
-            const FunctionOutputDTOModel: FunctionOutputDTOModelTypeFunc;
-
-            // Nethereum.Generators.DTOs.EventDTOCSharpTemplate
-            export interface EventDTOCSharpTemplate extends CQS.ClassTemplateBase$1<EventDTOModel>, Core.IClassTemplate {
-            }
-            export interface EventDTOCSharpTemplateTypeFunc extends TypeFunction {
-                (): EventDTOCSharpTemplateTypeFunc;
-                prototype: EventDTOCSharpTemplate;
-                new (eventDTOModel: EventDTOModel): EventDTOCSharpTemplate;
-                ctor: { new (eventDTOModel: EventDTOModel): EventDTOCSharpTemplate; };
-            }
-            const EventDTOCSharpTemplate: EventDTOCSharpTemplateTypeFunc;
-
-            // Nethereum.Generators.DTOs.FunctionOutputDTOCSharpTemplate
-            export interface FunctionOutputDTOCSharpTemplate extends CQS.ClassTemplateBase$1<FunctionOutputDTOModel>, Core.IClassTemplate {
-            }
-            export interface FunctionOutputDTOCSharpTemplateTypeFunc extends TypeFunction {
-                (): FunctionOutputDTOCSharpTemplateTypeFunc;
-                prototype: FunctionOutputDTOCSharpTemplate;
-                new (model: FunctionOutputDTOModel): FunctionOutputDTOCSharpTemplate;
-                ctor: { new (model: FunctionOutputDTOModel): FunctionOutputDTOCSharpTemplate; };
-            }
-            const FunctionOutputDTOCSharpTemplate: FunctionOutputDTOCSharpTemplateTypeFunc;
-
-            // Nethereum.Generators.DTOs.ParameterABIEventDTOCSharpTemplate
-            export interface ParameterABIEventDTOCSharpTemplate extends System.Object {
-                GenerateAllProperties(parameters: Model.ParameterABI[]): string;
-                GenerateProperty(parameter: Model.ParameterABI): string;
-            }
-            export interface ParameterABIEventDTOCSharpTemplateTypeFunc extends TypeFunction {
-                (): ParameterABIEventDTOCSharpTemplateTypeFunc;
-                prototype: ParameterABIEventDTOCSharpTemplate;
-                new (): ParameterABIEventDTOCSharpTemplate;
-                ctor: { new (): ParameterABIEventDTOCSharpTemplate; };
-            }
-            const ParameterABIEventDTOCSharpTemplate: ParameterABIEventDTOCSharpTemplateTypeFunc;
-
-            // Nethereum.Generators.DTOs.ParameterABIFunctionDTOCSharpTemplate
-            export interface ParameterABIFunctionDTOCSharpTemplate extends System.Object {
-                GenerateAllProperties(parameters: Model.ParameterABI[]): string;
-                GenerateProperty(parameter: Model.ParameterABI): string;
-            }
-            export interface ParameterABIFunctionDTOCSharpTemplateTypeFunc extends TypeFunction {
-                (): ParameterABIFunctionDTOCSharpTemplateTypeFunc;
-                prototype: ParameterABIFunctionDTOCSharpTemplate;
-                new (): ParameterABIFunctionDTOCSharpTemplate;
-                ctor: { new (): ParameterABIFunctionDTOCSharpTemplate; };
-            }
-            const ParameterABIFunctionDTOCSharpTemplate: ParameterABIFunctionDTOCSharpTemplateTypeFunc;
-
-            // Nethereum.Generators.DTOs.EventDTOFSharpTemplate
-            export interface EventDTOFSharpTemplate extends CQS.ClassTemplateBase$1<EventDTOModel>, Core.IClassTemplate {
-            }
-            export interface EventDTOFSharpTemplateTypeFunc extends TypeFunction {
-                (): EventDTOFSharpTemplateTypeFunc;
-                prototype: EventDTOFSharpTemplate;
-                new (eventDTOModel: EventDTOModel): EventDTOFSharpTemplate;
-                ctor: { new (eventDTOModel: EventDTOModel): EventDTOFSharpTemplate; };
-            }
-            const EventDTOFSharpTemplate: EventDTOFSharpTemplateTypeFunc;
-
-            // Nethereum.Generators.DTOs.FunctionOutputDTOFSharpTemplate
-            export interface FunctionOutputDTOFSharpTemplate extends CQS.ClassTemplateBase$1<FunctionOutputDTOModel>, Core.IClassTemplate {
-            }
-            export interface FunctionOutputDTOFSharpTemplateTypeFunc extends TypeFunction {
-                (): FunctionOutputDTOFSharpTemplateTypeFunc;
-                prototype: FunctionOutputDTOFSharpTemplate;
-                new (model: FunctionOutputDTOModel): FunctionOutputDTOFSharpTemplate;
-                ctor: { new (model: FunctionOutputDTOModel): FunctionOutputDTOFSharpTemplate; };
-            }
-            const FunctionOutputDTOFSharpTemplate: FunctionOutputDTOFSharpTemplateTypeFunc;
-
-            // Nethereum.Generators.DTOs.ParameterABIEventDTOFSharpTemplate
-            export interface ParameterABIEventDTOFSharpTemplate extends System.Object {
-                GenerateAllProperties(parameters: Model.ParameterABI[]): string;
-                GenerateProperty(parameter: Model.ParameterABI): string;
-            }
-            export interface ParameterABIEventDTOFSharpTemplateTypeFunc extends TypeFunction {
-                (): ParameterABIEventDTOFSharpTemplateTypeFunc;
-                prototype: ParameterABIEventDTOFSharpTemplate;
-                new (): ParameterABIEventDTOFSharpTemplate;
-                ctor: { new (): ParameterABIEventDTOFSharpTemplate; };
-            }
-            const ParameterABIEventDTOFSharpTemplate: ParameterABIEventDTOFSharpTemplateTypeFunc;
-
-            // Nethereum.Generators.DTOs.ParameterABIFunctionDTOFSharpTemplate
-            export interface ParameterABIFunctionDTOFSharpTemplate extends System.Object {
-                GenerateAllProperties(parameters: Model.ParameterABI[]): string;
-                GenerateProperty(parameter: Model.ParameterABI): string;
-            }
-            export interface ParameterABIFunctionDTOFSharpTemplateTypeFunc extends TypeFunction {
-                (): ParameterABIFunctionDTOFSharpTemplateTypeFunc;
-                prototype: ParameterABIFunctionDTOFSharpTemplate;
-                new (): ParameterABIFunctionDTOFSharpTemplate;
-                ctor: { new (): ParameterABIFunctionDTOFSharpTemplate; };
-            }
-            const ParameterABIFunctionDTOFSharpTemplate: ParameterABIFunctionDTOFSharpTemplateTypeFunc;
-
-            // Nethereum.Generators.DTOs.EventDTOVbTemplate
-            export interface EventDTOVbTemplate extends CQS.ClassTemplateBase$1<EventDTOModel>, Core.IClassTemplate {
-            }
-            export interface EventDTOVbTemplateTypeFunc extends TypeFunction {
-                (): EventDTOVbTemplateTypeFunc;
-                prototype: EventDTOVbTemplate;
-                new (eventDTOModel: EventDTOModel): EventDTOVbTemplate;
-                ctor: { new (eventDTOModel: EventDTOModel): EventDTOVbTemplate; };
-            }
-            const EventDTOVbTemplate: EventDTOVbTemplateTypeFunc;
-
-            // Nethereum.Generators.DTOs.FunctionOutputDTOVbTemplate
-            export interface FunctionOutputDTOVbTemplate extends CQS.ClassTemplateBase$1<FunctionOutputDTOModel>, Core.IClassTemplate {
-            }
-            export interface FunctionOutputDTOVbTemplateTypeFunc extends TypeFunction {
-                (): FunctionOutputDTOVbTemplateTypeFunc;
-                prototype: FunctionOutputDTOVbTemplate;
-                new (model: FunctionOutputDTOModel): FunctionOutputDTOVbTemplate;
-                ctor: { new (model: FunctionOutputDTOModel): FunctionOutputDTOVbTemplate; };
-            }
-            const FunctionOutputDTOVbTemplate: FunctionOutputDTOVbTemplateTypeFunc;
-
-            // Nethereum.Generators.DTOs.ParameterABIEventDTOVbTemplate
-            export interface ParameterABIEventDTOVbTemplate extends System.Object {
-                GenerateAllProperties(parameters: Model.ParameterABI[]): string;
-                GenerateProperty(parameter: Model.ParameterABI): string;
-            }
-            export interface ParameterABIEventDTOVbTemplateTypeFunc extends TypeFunction {
-                (): ParameterABIEventDTOVbTemplateTypeFunc;
-                prototype: ParameterABIEventDTOVbTemplate;
-                new (): ParameterABIEventDTOVbTemplate;
-                ctor: { new (): ParameterABIEventDTOVbTemplate; };
-            }
-            const ParameterABIEventDTOVbTemplate: ParameterABIEventDTOVbTemplateTypeFunc;
-
-            // Nethereum.Generators.DTOs.ParameterABIFunctionDTOVbTemplate
-            export interface ParameterABIFunctionDTOVbTemplate extends System.Object {
-                GenerateAllProperties(parameters: Model.ParameterABI[]): string;
-                GenerateProperty(parameter: Model.ParameterABI): string;
-            }
-            export interface ParameterABIFunctionDTOVbTemplateTypeFunc extends TypeFunction {
-                (): ParameterABIFunctionDTOVbTemplateTypeFunc;
-                prototype: ParameterABIFunctionDTOVbTemplate;
-                new (): ParameterABIFunctionDTOVbTemplate;
-                ctor: { new (): ParameterABIFunctionDTOVbTemplate; };
-            }
-            const ParameterABIFunctionDTOVbTemplate: ParameterABIFunctionDTOVbTemplateTypeFunc;
+            const StructABI: StructABITypeFunc;
         }
         module Service {
+            // Nethereum.Generators.Service.AllMessagesGenerator
+            export interface AllMessagesGenerator extends Core.MultipleClassGeneratorBase$2<CQS.MultipleClassFileTemplate, AllMessagesModel>, Core.IFileGenerator, Core.IGenerator {
+                InitialiseTemplate(codeGenLanguage: Core.CodeGenLanguage): void;
+            }
+            export interface AllMessagesGeneratorTypeFunc extends TypeFunction {
+                (): AllMessagesGeneratorTypeFunc;
+                prototype: AllMessagesGenerator;
+                new (classGenerators: System.Collections.Generic.IEnumerable$1<Core.IClassGenerator>, contractName: string, namespace: string, codeGenLanguage: Core.CodeGenLanguage): AllMessagesGenerator;
+                ctor: { new (classGenerators: System.Collections.Generic.IEnumerable$1<Core.IClassGenerator>, contractName: string, namespace: string, codeGenLanguage: Core.CodeGenLanguage): AllMessagesGenerator; };
+            }
+            const AllMessagesGenerator: AllMessagesGeneratorTypeFunc;
+
+            // Nethereum.Generators.Service.AllMessagesModel
+            export interface AllMessagesModel extends Core.FileModel, Core.IFileModel {
+                get_ContractDeploymentCQSMessageModel(): CQS.ContractDeploymentCQSMessageModel;
+            }
+            export interface AllMessagesModelTypeFunc extends TypeFunction {
+                (): AllMessagesModelTypeFunc;
+                prototype: AllMessagesModel;
+                new (contractName: string, namespace: string): AllMessagesModel;
+                ctor: { new (contractName: string, namespace: string): AllMessagesModel; };
+            }
+            const AllMessagesModel: AllMessagesModelTypeFunc;
+
             // Nethereum.Generators.Service.ServiceGenerator
-            export interface ServiceGenerator extends Core.ClassGeneratorBase$2<CQS.ClassTemplateBase$1<ServiceModel>, ServiceModel>, Core.IFileGenerator, Core.IGenerator {
+            export interface ServiceGenerator extends Core.ClassGeneratorBase$2<CQS.ClassTemplateBase$1<ServiceModel>, ServiceModel>, Core.IFileGenerator, Core.IGenerator, Core.IClassGenerator {
                 get_ContractABI(): Model.ContractABI;
                 InitialiseTemplate(codeGenLanguage: Core.CodeGenLanguage): void;
             }
@@ -894,7 +625,7 @@ declare module Nethereum {
             const ServiceGenerator: ServiceGeneratorTypeFunc;
 
             // Nethereum.Generators.Service.ServiceModel
-            export interface ServiceModel extends Core.TypeMessageModel, Core.IClassModel {
+            export interface ServiceModel extends Core.TypeMessageModel, Core.IClassModel, Core.IFileModel {
                 get_ContractABI(): Model.ContractABI;
                 get_CQSNamespace(): string;
                 get_FunctionOutputNamespace(): string;
@@ -1016,9 +747,512 @@ declare module Nethereum {
             }
             const ServiceVbTemplate: ServiceVbTemplateTypeFunc;
         }
+        module CQS {
+            // Nethereum.Generators.CQS.ClassFileTemplate
+            export interface ClassFileTemplate extends FileTemplate {
+                get_ClassModel(): Core.IClassModel;
+                get_ClassTemplate(): Core.IClassTemplate;
+                GenerateFullClass(): string;
+            }
+            export interface ClassFileTemplateTypeFunc extends TypeFunction {
+                (): ClassFileTemplateTypeFunc;
+                prototype: ClassFileTemplate;
+            }
+            const ClassFileTemplate: ClassFileTemplateTypeFunc;
+
+            // Nethereum.Generators.CQS.ClassTemplateBase<TModel>
+            export interface ClassTemplateBase$1<TModel> extends System.Object, Core.IClassTemplate {
+                GenerateClass(): string;
+                GenerateFullClass(): string;
+            }
+            export interface ClassTemplateBase$1TypeFunc<TModel> extends TypeFunction {
+                (): ClassTemplateBase$1TypeFunc<TModel>;
+                prototype: ClassTemplateBase$1<TModel>;
+            }
+            export function ClassTemplateBase$1<TModel>(TModel: TypeArg<TModel>): ClassTemplateBase$1TypeFunc<TModel>;
+
+            // Nethereum.Generators.CQS.CSharpClassFileTemplate
+            export interface CSharpClassFileTemplate extends ClassFileTemplate {
+            }
+            export interface CSharpClassFileTemplateTypeFunc extends TypeFunction {
+                (): CSharpClassFileTemplateTypeFunc;
+                prototype: CSharpClassFileTemplate;
+                new (classModel: Core.IClassModel, classTemplate: Core.IClassTemplate): CSharpClassFileTemplate;
+                ctor: { new (classModel: Core.IClassModel, classTemplate: Core.IClassTemplate): CSharpClassFileTemplate; };
+            }
+            const CSharpClassFileTemplate: CSharpClassFileTemplateTypeFunc;
+
+            // Nethereum.Generators.CQS.CSharpMultipleClassFileTemplate
+            export interface CSharpMultipleClassFileTemplate extends MultipleClassFileTemplate {
+            }
+            export interface CSharpMultipleClassFileTemplateTypeFunc extends TypeFunction {
+                (): CSharpMultipleClassFileTemplateTypeFunc;
+                prototype: CSharpMultipleClassFileTemplate;
+                new (classGenerators: System.Collections.Generic.IEnumerable$1<Core.IClassGenerator>, fileModel: Core.IFileModel): CSharpMultipleClassFileTemplate;
+                ctor: { new (classGenerators: System.Collections.Generic.IEnumerable$1<Core.IClassGenerator>, fileModel: Core.IFileModel): CSharpMultipleClassFileTemplate; };
+            }
+            const CSharpMultipleClassFileTemplate: CSharpMultipleClassFileTemplateTypeFunc;
+
+            // Nethereum.Generators.CQS.FileTemplate
+            export interface FileTemplate extends System.Object {
+                get_FileModel(): Core.IFileModel;
+                GenerateNamespaceDependencies(): string;
+                GenerateNamespaceDependency(namespaceName: string): string;
+            }
+            export interface FileTemplateTypeFunc extends TypeFunction {
+                (): FileTemplateTypeFunc;
+                prototype: FileTemplate;
+            }
+            const FileTemplate: FileTemplateTypeFunc;
+
+            // Nethereum.Generators.CQS.FSharpClassFileTemplate
+            export interface FSharpClassFileTemplate extends ClassFileTemplate {
+            }
+            export interface FSharpClassFileTemplateTypeFunc extends TypeFunction {
+                (): FSharpClassFileTemplateTypeFunc;
+                prototype: FSharpClassFileTemplate;
+                new (classModel: Core.IClassModel, classTemplate: Core.IClassTemplate): FSharpClassFileTemplate;
+                ctor: { new (classModel: Core.IClassModel, classTemplate: Core.IClassTemplate): FSharpClassFileTemplate; };
+            }
+            const FSharpClassFileTemplate: FSharpClassFileTemplateTypeFunc;
+
+            // Nethereum.Generators.CQS.FSharpMultipleClassFileTemplate
+            export interface FSharpMultipleClassFileTemplate extends MultipleClassFileTemplate {
+            }
+            export interface FSharpMultipleClassFileTemplateTypeFunc extends TypeFunction {
+                (): FSharpMultipleClassFileTemplateTypeFunc;
+                prototype: FSharpMultipleClassFileTemplate;
+                new (classGenerators: System.Collections.Generic.IEnumerable$1<Core.IClassGenerator>, fileModel: Core.IFileModel): FSharpMultipleClassFileTemplate;
+                ctor: { new (classGenerators: System.Collections.Generic.IEnumerable$1<Core.IClassGenerator>, fileModel: Core.IFileModel): FSharpMultipleClassFileTemplate; };
+            }
+            const FSharpMultipleClassFileTemplate: FSharpMultipleClassFileTemplateTypeFunc;
+
+            // Nethereum.Generators.CQS.MultipleClassFileTemplate
+            export interface MultipleClassFileTemplate extends FileTemplate {
+                GenerateFile(): string;
+            }
+            export interface MultipleClassFileTemplateTypeFunc extends TypeFunction {
+                (): MultipleClassFileTemplateTypeFunc;
+                prototype: MultipleClassFileTemplate;
+                new (classGenerators: System.Collections.Generic.IEnumerable$1<Core.IClassGenerator>, fileModel: Core.IFileModel): MultipleClassFileTemplate;
+                ctor: { new (classGenerators: System.Collections.Generic.IEnumerable$1<Core.IClassGenerator>, fileModel: Core.IFileModel): MultipleClassFileTemplate; };
+            }
+            const MultipleClassFileTemplate: MultipleClassFileTemplateTypeFunc;
+
+            // Nethereum.Generators.CQS.VbClassFileTemplate
+            export interface VbClassFileTemplate extends ClassFileTemplate {
+            }
+            export interface VbClassFileTemplateTypeFunc extends TypeFunction {
+                (): VbClassFileTemplateTypeFunc;
+                prototype: VbClassFileTemplate;
+                new (classModel: Core.IClassModel, classTemplate: Core.IClassTemplate): VbClassFileTemplate;
+                ctor: { new (classModel: Core.IClassModel, classTemplate: Core.IClassTemplate): VbClassFileTemplate; };
+            }
+            const VbClassFileTemplate: VbClassFileTemplateTypeFunc;
+
+            // Nethereum.Generators.CQS.VbMultipleClassFileTemplate
+            export interface VbMultipleClassFileTemplate extends MultipleClassFileTemplate {
+            }
+            export interface VbMultipleClassFileTemplateTypeFunc extends TypeFunction {
+                (): VbMultipleClassFileTemplateTypeFunc;
+                prototype: VbMultipleClassFileTemplate;
+                new (classGenerators: System.Collections.Generic.IEnumerable$1<Core.IClassGenerator>, fileModel: Core.IFileModel): VbMultipleClassFileTemplate;
+                ctor: { new (classGenerators: System.Collections.Generic.IEnumerable$1<Core.IClassGenerator>, fileModel: Core.IFileModel): VbMultipleClassFileTemplate; };
+            }
+            const VbMultipleClassFileTemplate: VbMultipleClassFileTemplateTypeFunc;
+
+            // Nethereum.Generators.CQS.ContractDeploymentCQSMessageGenerator
+            export interface ContractDeploymentCQSMessageGenerator extends Core.ClassGeneratorBase$2<ClassTemplateBase$1<ContractDeploymentCQSMessageModel>, ContractDeploymentCQSMessageModel>, Core.IFileGenerator, Core.IGenerator, Core.IClassGenerator {
+                InitialiseTemplate(codeGenLanguage: Core.CodeGenLanguage): void;
+            }
+            export interface ContractDeploymentCQSMessageGeneratorTypeFunc extends TypeFunction {
+                (): ContractDeploymentCQSMessageGeneratorTypeFunc;
+                prototype: ContractDeploymentCQSMessageGenerator;
+                new (abi: Model.ConstructorABI, namespaceName: string, byteCode: string, contractName: string, codeGenLanguage: Core.CodeGenLanguage): ContractDeploymentCQSMessageGenerator;
+                ctor: { new (abi: Model.ConstructorABI, namespaceName: string, byteCode: string, contractName: string, codeGenLanguage: Core.CodeGenLanguage): ContractDeploymentCQSMessageGenerator; };
+            }
+            const ContractDeploymentCQSMessageGenerator: ContractDeploymentCQSMessageGeneratorTypeFunc;
+
+            // Nethereum.Generators.CQS.ContractDeploymentCQSMessageModel
+            export interface ContractDeploymentCQSMessageModel extends Core.TypeMessageModel, Core.IClassModel, Core.IFileModel {
+                get_ConstructorABI(): Model.ConstructorABI;
+                get_ByteCode(): string;
+            }
+            export interface ContractDeploymentCQSMessageModelTypeFunc extends TypeFunction {
+                (): ContractDeploymentCQSMessageModelTypeFunc;
+                prototype: ContractDeploymentCQSMessageModel;
+                new (constructorABI: Model.ConstructorABI, namespace: string, byteCode: string, contractName: string): ContractDeploymentCQSMessageModel;
+                ctor: { new (constructorABI: Model.ConstructorABI, namespace: string, byteCode: string, contractName: string): ContractDeploymentCQSMessageModel; };
+            }
+            const ContractDeploymentCQSMessageModel: ContractDeploymentCQSMessageModelTypeFunc;
+
+            // Nethereum.Generators.CQS.FunctionCQSMessageGenerator
+            export interface FunctionCQSMessageGenerator extends Core.ClassGeneratorBase$2<ClassTemplateBase$1<FunctionCQSMessageModel>, FunctionCQSMessageModel>, Core.IFileGenerator, Core.IGenerator, Core.IClassGenerator {
+                get_FunctionABI(): Model.FunctionABI;
+            }
+            export interface FunctionCQSMessageGeneratorTypeFunc extends TypeFunction {
+                (): FunctionCQSMessageGeneratorTypeFunc;
+                prototype: FunctionCQSMessageGenerator;
+                new (functionABI: Model.FunctionABI, namespace: string, namespaceFunctionOutput: string, codeGenLanguage: Core.CodeGenLanguage): FunctionCQSMessageGenerator;
+                ctor: { new (functionABI: Model.FunctionABI, namespace: string, namespaceFunctionOutput: string, codeGenLanguage: Core.CodeGenLanguage): FunctionCQSMessageGenerator; };
+            }
+            const FunctionCQSMessageGenerator: FunctionCQSMessageGeneratorTypeFunc;
+
+            // Nethereum.Generators.CQS.FunctionCQSMessageModel
+            export interface FunctionCQSMessageModel extends Core.TypeMessageModel, Core.IClassModel, Core.IFileModel {
+                get_FunctionABI(): Model.FunctionABI;
+            }
+            export interface FunctionCQSMessageModelTypeFunc extends TypeFunction {
+                (): FunctionCQSMessageModelTypeFunc;
+                prototype: FunctionCQSMessageModel;
+                new (functionABI: Model.FunctionABI, namespace: string): FunctionCQSMessageModel;
+                ctor: { new (functionABI: Model.FunctionABI, namespace: string): FunctionCQSMessageModel; };
+            }
+            const FunctionCQSMessageModel: FunctionCQSMessageModelTypeFunc;
+
+            // Nethereum.Generators.CQS.ContractDeploymentCQSMessageCSharpTemplate
+            export interface ContractDeploymentCQSMessageCSharpTemplate extends ClassTemplateBase$1<ContractDeploymentCQSMessageModel>, Core.IClassTemplate {
+                GetPartialMainClass(): string;
+            }
+            export interface ContractDeploymentCQSMessageCSharpTemplateTypeFunc extends TypeFunction {
+                (): ContractDeploymentCQSMessageCSharpTemplateTypeFunc;
+                prototype: ContractDeploymentCQSMessageCSharpTemplate;
+                new (model: ContractDeploymentCQSMessageModel): ContractDeploymentCQSMessageCSharpTemplate;
+                ctor: { new (model: ContractDeploymentCQSMessageModel): ContractDeploymentCQSMessageCSharpTemplate; };
+            }
+            const ContractDeploymentCQSMessageCSharpTemplate: ContractDeploymentCQSMessageCSharpTemplateTypeFunc;
+
+            // Nethereum.Generators.CQS.FunctionCQSMessageCSharpTemplate
+            export interface FunctionCQSMessageCSharpTemplate extends ClassTemplateBase$1<FunctionCQSMessageModel>, Core.IClassTemplate {
+                GetPartialMainClass(): string;
+            }
+            export interface FunctionCQSMessageCSharpTemplateTypeFunc extends TypeFunction {
+                (): FunctionCQSMessageCSharpTemplateTypeFunc;
+                prototype: FunctionCQSMessageCSharpTemplate;
+                new (model: FunctionCQSMessageModel, functionOutputDTOModel: DTOs.FunctionOutputDTOModel, functionABIModel: Core.FunctionABIModel): FunctionCQSMessageCSharpTemplate;
+                ctor: { new (model: FunctionCQSMessageModel, functionOutputDTOModel: DTOs.FunctionOutputDTOModel, functionABIModel: Core.FunctionABIModel): FunctionCQSMessageCSharpTemplate; };
+            }
+            const FunctionCQSMessageCSharpTemplate: FunctionCQSMessageCSharpTemplateTypeFunc;
+
+            // Nethereum.Generators.CQS.ContractDeploymentCQSMessageFSharpTemplate
+            export interface ContractDeploymentCQSMessageFSharpTemplate extends ClassTemplateBase$1<ContractDeploymentCQSMessageModel>, Core.IClassTemplate {
+            }
+            export interface ContractDeploymentCQSMessageFSharpTemplateTypeFunc extends TypeFunction {
+                (): ContractDeploymentCQSMessageFSharpTemplateTypeFunc;
+                prototype: ContractDeploymentCQSMessageFSharpTemplate;
+                new (model: ContractDeploymentCQSMessageModel): ContractDeploymentCQSMessageFSharpTemplate;
+                ctor: { new (model: ContractDeploymentCQSMessageModel): ContractDeploymentCQSMessageFSharpTemplate; };
+            }
+            const ContractDeploymentCQSMessageFSharpTemplate: ContractDeploymentCQSMessageFSharpTemplateTypeFunc;
+
+            // Nethereum.Generators.CQS.FunctionCQSMessageFSharpTemplate
+            export interface FunctionCQSMessageFSharpTemplate extends ClassTemplateBase$1<FunctionCQSMessageModel>, Core.IClassTemplate {
+            }
+            export interface FunctionCQSMessageFSharpTemplateTypeFunc extends TypeFunction {
+                (): FunctionCQSMessageFSharpTemplateTypeFunc;
+                prototype: FunctionCQSMessageFSharpTemplate;
+                new (model: FunctionCQSMessageModel, functionOutputDTOModel: DTOs.FunctionOutputDTOModel, functionABIModel: Core.FunctionABIModel): FunctionCQSMessageFSharpTemplate;
+                ctor: { new (model: FunctionCQSMessageModel, functionOutputDTOModel: DTOs.FunctionOutputDTOModel, functionABIModel: Core.FunctionABIModel): FunctionCQSMessageFSharpTemplate; };
+            }
+            const FunctionCQSMessageFSharpTemplate: FunctionCQSMessageFSharpTemplateTypeFunc;
+
+            // Nethereum.Generators.CQS.ContractDeploymentCQSMessageVbTemplate
+            export interface ContractDeploymentCQSMessageVbTemplate extends ClassTemplateBase$1<ContractDeploymentCQSMessageModel>, Core.IClassTemplate {
+                GetPartialMainClass(): string;
+            }
+            export interface ContractDeploymentCQSMessageVbTemplateTypeFunc extends TypeFunction {
+                (): ContractDeploymentCQSMessageVbTemplateTypeFunc;
+                prototype: ContractDeploymentCQSMessageVbTemplate;
+                new (model: ContractDeploymentCQSMessageModel): ContractDeploymentCQSMessageVbTemplate;
+                ctor: { new (model: ContractDeploymentCQSMessageModel): ContractDeploymentCQSMessageVbTemplate; };
+            }
+            const ContractDeploymentCQSMessageVbTemplate: ContractDeploymentCQSMessageVbTemplateTypeFunc;
+
+            // Nethereum.Generators.CQS.FunctionCQSMessageVbTemplate
+            export interface FunctionCQSMessageVbTemplate extends ClassTemplateBase$1<FunctionCQSMessageModel>, Core.IClassTemplate {
+                GetPartialMainClass(): string;
+            }
+            export interface FunctionCQSMessageVbTemplateTypeFunc extends TypeFunction {
+                (): FunctionCQSMessageVbTemplateTypeFunc;
+                prototype: FunctionCQSMessageVbTemplate;
+                new (model: FunctionCQSMessageModel, functionOutputDTOModel: DTOs.FunctionOutputDTOModel, functionABIModel: Core.FunctionABIModel): FunctionCQSMessageVbTemplate;
+                ctor: { new (model: FunctionCQSMessageModel, functionOutputDTOModel: DTOs.FunctionOutputDTOModel, functionABIModel: Core.FunctionABIModel): FunctionCQSMessageVbTemplate; };
+            }
+            const FunctionCQSMessageVbTemplate: FunctionCQSMessageVbTemplateTypeFunc;
+        }
+        module DTOs {
+            // Nethereum.Generators.DTOs.EventDTOGenerator
+            export interface EventDTOGenerator extends Core.ClassGeneratorBase$2<CQS.ClassTemplateBase$1<EventDTOModel>, EventDTOModel>, Core.IFileGenerator, Core.IGenerator, Core.IClassGenerator {
+                InitialiseTemplate(codeGenLanguage: Core.CodeGenLanguage): void;
+            }
+            export interface EventDTOGeneratorTypeFunc extends TypeFunction {
+                (): EventDTOGeneratorTypeFunc;
+                prototype: EventDTOGenerator;
+                new (abi: Model.EventABI, namespace: string, codeGenLanguage: Core.CodeGenLanguage): EventDTOGenerator;
+                ctor: { new (abi: Model.EventABI, namespace: string, codeGenLanguage: Core.CodeGenLanguage): EventDTOGenerator; };
+            }
+            const EventDTOGenerator: EventDTOGeneratorTypeFunc;
+
+            // Nethereum.Generators.DTOs.EventDTOModel
+            export interface EventDTOModel extends Core.TypeMessageModel, Core.IClassModel, Core.IFileModel {
+                get_EventABI(): Model.EventABI;
+                CanGenerateOutputDTO(): boolean;
+            }
+            export interface EventDTOModelTypeFunc extends TypeFunction {
+                (): EventDTOModelTypeFunc;
+                prototype: EventDTOModel;
+                new (eventABI: Model.EventABI, namespace: string): EventDTOModel;
+                ctor: { new (eventABI: Model.EventABI, namespace: string): EventDTOModel; };
+            }
+            const EventDTOModel: EventDTOModelTypeFunc;
+
+            // Nethereum.Generators.DTOs.FunctionOutputDTOGenerator
+            export interface FunctionOutputDTOGenerator extends Core.ClassGeneratorBase$2<CQS.ClassTemplateBase$1<FunctionOutputDTOModel>, FunctionOutputDTOModel>, Core.IFileGenerator, Core.IGenerator, Core.IClassGenerator {
+                InitialiseTemplate(codeGenLanguage: Core.CodeGenLanguage): void;
+            }
+            export interface FunctionOutputDTOGeneratorTypeFunc extends TypeFunction {
+                (): FunctionOutputDTOGeneratorTypeFunc;
+                prototype: FunctionOutputDTOGenerator;
+                new (functionABI: Model.FunctionABI, namespace: string, codeGenLanguage: Core.CodeGenLanguage): FunctionOutputDTOGenerator;
+                ctor: { new (functionABI: Model.FunctionABI, namespace: string, codeGenLanguage: Core.CodeGenLanguage): FunctionOutputDTOGenerator; };
+            }
+            const FunctionOutputDTOGenerator: FunctionOutputDTOGeneratorTypeFunc;
+
+            // Nethereum.Generators.DTOs.FunctionOutputDTOModel
+            export interface FunctionOutputDTOModel extends Core.TypeMessageModel, Core.IClassModel, Core.IFileModel {
+                get_FunctionABI(): Model.FunctionABI;
+                CanGenerateOutputDTO(): boolean;
+            }
+            export interface FunctionOutputDTOModelTypeFunc extends TypeFunction {
+                (): FunctionOutputDTOModelTypeFunc;
+                prototype: FunctionOutputDTOModel;
+                new (functionABI: Model.FunctionABI, namespace: string): FunctionOutputDTOModel;
+                ctor: { new (functionABI: Model.FunctionABI, namespace: string): FunctionOutputDTOModel; };
+            }
+            const FunctionOutputDTOModel: FunctionOutputDTOModelTypeFunc;
+
+            // Nethereum.Generators.DTOs.StructTypeGenerator
+            export interface StructTypeGenerator extends Core.ClassGeneratorBase$2<CQS.ClassTemplateBase$1<StructTypeModel>, StructTypeModel>, Core.IFileGenerator, Core.IGenerator, Core.IClassGenerator {
+                InitialiseTemplate(codeGenLanguage: Core.CodeGenLanguage): void;
+            }
+            export interface StructTypeGeneratorTypeFunc extends TypeFunction {
+                (): StructTypeGeneratorTypeFunc;
+                prototype: StructTypeGenerator;
+                new (structTypeABI: Model.StructABI, namespace: string, codeGenLanguage: Core.CodeGenLanguage): StructTypeGenerator;
+                ctor: { new (structTypeABI: Model.StructABI, namespace: string, codeGenLanguage: Core.CodeGenLanguage): StructTypeGenerator; };
+            }
+            const StructTypeGenerator: StructTypeGeneratorTypeFunc;
+
+            // Nethereum.Generators.DTOs.StructTypeModel
+            export interface StructTypeModel extends Core.TypeMessageModel, Core.IClassModel, Core.IFileModel {
+                get_StructTypeABI(): Model.StructABI;
+            }
+            export interface StructTypeModelTypeFunc extends TypeFunction {
+                (): StructTypeModelTypeFunc;
+                prototype: StructTypeModel;
+                new (structTypeABI: Model.StructABI, namespace: string): StructTypeModel;
+                ctor: { new (structTypeABI: Model.StructABI, namespace: string): StructTypeModel; };
+            }
+            const StructTypeModel: StructTypeModelTypeFunc;
+
+            // Nethereum.Generators.DTOs.EventDTOCSharpTemplate
+            export interface EventDTOCSharpTemplate extends CQS.ClassTemplateBase$1<EventDTOModel>, Core.IClassTemplate {
+                GetPartialMainClass(): string;
+            }
+            export interface EventDTOCSharpTemplateTypeFunc extends TypeFunction {
+                (): EventDTOCSharpTemplateTypeFunc;
+                prototype: EventDTOCSharpTemplate;
+                new (eventDTOModel: EventDTOModel): EventDTOCSharpTemplate;
+                ctor: { new (eventDTOModel: EventDTOModel): EventDTOCSharpTemplate; };
+            }
+            const EventDTOCSharpTemplate: EventDTOCSharpTemplateTypeFunc;
+
+            // Nethereum.Generators.DTOs.FunctionOutputDTOCSharpTemplate
+            export interface FunctionOutputDTOCSharpTemplate extends CQS.ClassTemplateBase$1<FunctionOutputDTOModel>, Core.IClassTemplate {
+                GetPartialMainClass(): string;
+            }
+            export interface FunctionOutputDTOCSharpTemplateTypeFunc extends TypeFunction {
+                (): FunctionOutputDTOCSharpTemplateTypeFunc;
+                prototype: FunctionOutputDTOCSharpTemplate;
+                new (model: FunctionOutputDTOModel): FunctionOutputDTOCSharpTemplate;
+                ctor: { new (model: FunctionOutputDTOModel): FunctionOutputDTOCSharpTemplate; };
+            }
+            const FunctionOutputDTOCSharpTemplate: FunctionOutputDTOCSharpTemplateTypeFunc;
+
+            // Nethereum.Generators.DTOs.ParameterABIEventDTOCSharpTemplate
+            export interface ParameterABIEventDTOCSharpTemplate extends System.Object {
+                GenerateAllProperties(parameters: Model.ParameterABI[]): string;
+                GenerateProperty(parameter: Model.ParameterABI): string;
+            }
+            export interface ParameterABIEventDTOCSharpTemplateTypeFunc extends TypeFunction {
+                (): ParameterABIEventDTOCSharpTemplateTypeFunc;
+                prototype: ParameterABIEventDTOCSharpTemplate;
+                new (): ParameterABIEventDTOCSharpTemplate;
+                ctor: { new (): ParameterABIEventDTOCSharpTemplate; };
+            }
+            const ParameterABIEventDTOCSharpTemplate: ParameterABIEventDTOCSharpTemplateTypeFunc;
+
+            // Nethereum.Generators.DTOs.ParameterABIFunctionDTOCSharpTemplate
+            export interface ParameterABIFunctionDTOCSharpTemplate extends System.Object {
+                GenerateAllProperties(parameters: Model.ParameterABI[]): string;
+                GenerateProperty(parameter: Model.ParameterABI): string;
+                GenerateAllFunctionParameters(parameters: Model.ParameterABI[]): string;
+                GenerateFunctionParameter(parameter: Model.ParameterABI): string;
+                GenerateAssigmentFunctionParametersToProperties(parameters: Model.ParameterABI[], objectName: string, spacing: string): string;
+                GenerateAssigmentFunctionParameterToProperty(parameter: Model.ParameterABI, objectName: string, spacing: string): string;
+            }
+            export interface ParameterABIFunctionDTOCSharpTemplateTypeFunc extends TypeFunction {
+                (): ParameterABIFunctionDTOCSharpTemplateTypeFunc;
+                prototype: ParameterABIFunctionDTOCSharpTemplate;
+                new (): ParameterABIFunctionDTOCSharpTemplate;
+                ctor: { new (): ParameterABIFunctionDTOCSharpTemplate; };
+            }
+            const ParameterABIFunctionDTOCSharpTemplate: ParameterABIFunctionDTOCSharpTemplateTypeFunc;
+
+            // Nethereum.Generators.DTOs.StructTypeCSharpTemplate
+            export interface StructTypeCSharpTemplate extends CQS.ClassTemplateBase$1<StructTypeModel>, Core.IClassTemplate {
+                GetPartialMainClass(): string;
+            }
+            export interface StructTypeCSharpTemplateTypeFunc extends TypeFunction {
+                (): StructTypeCSharpTemplateTypeFunc;
+                prototype: StructTypeCSharpTemplate;
+                new (model: StructTypeModel): StructTypeCSharpTemplate;
+                ctor: { new (model: StructTypeModel): StructTypeCSharpTemplate; };
+            }
+            const StructTypeCSharpTemplate: StructTypeCSharpTemplateTypeFunc;
+
+            // Nethereum.Generators.DTOs.EventDTOFSharpTemplate
+            export interface EventDTOFSharpTemplate extends CQS.ClassTemplateBase$1<EventDTOModel>, Core.IClassTemplate {
+            }
+            export interface EventDTOFSharpTemplateTypeFunc extends TypeFunction {
+                (): EventDTOFSharpTemplateTypeFunc;
+                prototype: EventDTOFSharpTemplate;
+                new (eventDTOModel: EventDTOModel): EventDTOFSharpTemplate;
+                ctor: { new (eventDTOModel: EventDTOModel): EventDTOFSharpTemplate; };
+            }
+            const EventDTOFSharpTemplate: EventDTOFSharpTemplateTypeFunc;
+
+            // Nethereum.Generators.DTOs.FunctionOutputDTOFSharpTemplate
+            export interface FunctionOutputDTOFSharpTemplate extends CQS.ClassTemplateBase$1<FunctionOutputDTOModel>, Core.IClassTemplate {
+            }
+            export interface FunctionOutputDTOFSharpTemplateTypeFunc extends TypeFunction {
+                (): FunctionOutputDTOFSharpTemplateTypeFunc;
+                prototype: FunctionOutputDTOFSharpTemplate;
+                new (model: FunctionOutputDTOModel): FunctionOutputDTOFSharpTemplate;
+                ctor: { new (model: FunctionOutputDTOModel): FunctionOutputDTOFSharpTemplate; };
+            }
+            const FunctionOutputDTOFSharpTemplate: FunctionOutputDTOFSharpTemplateTypeFunc;
+
+            // Nethereum.Generators.DTOs.ParameterABIEventDTOFSharpTemplate
+            export interface ParameterABIEventDTOFSharpTemplate extends System.Object {
+                GenerateAllProperties(parameters: Model.ParameterABI[]): string;
+                GenerateProperty(parameter: Model.ParameterABI): string;
+            }
+            export interface ParameterABIEventDTOFSharpTemplateTypeFunc extends TypeFunction {
+                (): ParameterABIEventDTOFSharpTemplateTypeFunc;
+                prototype: ParameterABIEventDTOFSharpTemplate;
+                new (): ParameterABIEventDTOFSharpTemplate;
+                ctor: { new (): ParameterABIEventDTOFSharpTemplate; };
+            }
+            const ParameterABIEventDTOFSharpTemplate: ParameterABIEventDTOFSharpTemplateTypeFunc;
+
+            // Nethereum.Generators.DTOs.ParameterABIFunctionDTOFSharpTemplate
+            export interface ParameterABIFunctionDTOFSharpTemplate extends System.Object {
+                GenerateAllProperties(parameters: Model.ParameterABI[]): string;
+                GenerateProperty(parameter: Model.ParameterABI): string;
+                GenerateAllFunctionParameters(parameters: Model.ParameterABI[]): string;
+                GenerateFunctionParameter(parameter: Model.ParameterABI): string;
+                GenerateAssigmentFunctionParametersToProperties(parameters: Model.ParameterABI[], objectName: string, spacing: string): string;
+                GenerateAssigmentFunctionParameterToProperty(parameter: Model.ParameterABI, objectName: string, spacing: string): string;
+            }
+            export interface ParameterABIFunctionDTOFSharpTemplateTypeFunc extends TypeFunction {
+                (): ParameterABIFunctionDTOFSharpTemplateTypeFunc;
+                prototype: ParameterABIFunctionDTOFSharpTemplate;
+                new (): ParameterABIFunctionDTOFSharpTemplate;
+                ctor: { new (): ParameterABIFunctionDTOFSharpTemplate; };
+            }
+            const ParameterABIFunctionDTOFSharpTemplate: ParameterABIFunctionDTOFSharpTemplateTypeFunc;
+
+            // Nethereum.Generators.DTOs.StructTypeFSharpTemplate
+            export interface StructTypeFSharpTemplate extends CQS.ClassTemplateBase$1<StructTypeModel>, Core.IClassTemplate {
+            }
+            export interface StructTypeFSharpTemplateTypeFunc extends TypeFunction {
+                (): StructTypeFSharpTemplateTypeFunc;
+                prototype: StructTypeFSharpTemplate;
+                new (model: StructTypeModel): StructTypeFSharpTemplate;
+                ctor: { new (model: StructTypeModel): StructTypeFSharpTemplate; };
+            }
+            const StructTypeFSharpTemplate: StructTypeFSharpTemplateTypeFunc;
+
+            // Nethereum.Generators.DTOs.EventDTOVbTemplate
+            export interface EventDTOVbTemplate extends CQS.ClassTemplateBase$1<EventDTOModel>, Core.IClassTemplate {
+                GetPartialMainClass(): string;
+            }
+            export interface EventDTOVbTemplateTypeFunc extends TypeFunction {
+                (): EventDTOVbTemplateTypeFunc;
+                prototype: EventDTOVbTemplate;
+                new (eventDTOModel: EventDTOModel): EventDTOVbTemplate;
+                ctor: { new (eventDTOModel: EventDTOModel): EventDTOVbTemplate; };
+            }
+            const EventDTOVbTemplate: EventDTOVbTemplateTypeFunc;
+
+            // Nethereum.Generators.DTOs.FunctionOutputDTOVbTemplate
+            export interface FunctionOutputDTOVbTemplate extends CQS.ClassTemplateBase$1<FunctionOutputDTOModel>, Core.IClassTemplate {
+                GetPartialMainClass(): string;
+            }
+            export interface FunctionOutputDTOVbTemplateTypeFunc extends TypeFunction {
+                (): FunctionOutputDTOVbTemplateTypeFunc;
+                prototype: FunctionOutputDTOVbTemplate;
+                new (model: FunctionOutputDTOModel): FunctionOutputDTOVbTemplate;
+                ctor: { new (model: FunctionOutputDTOModel): FunctionOutputDTOVbTemplate; };
+            }
+            const FunctionOutputDTOVbTemplate: FunctionOutputDTOVbTemplateTypeFunc;
+
+            // Nethereum.Generators.DTOs.ParameterABIEventDTOVbTemplate
+            export interface ParameterABIEventDTOVbTemplate extends System.Object {
+                GenerateAllProperties(parameters: Model.ParameterABI[]): string;
+                GenerateProperty(parameter: Model.ParameterABI): string;
+            }
+            export interface ParameterABIEventDTOVbTemplateTypeFunc extends TypeFunction {
+                (): ParameterABIEventDTOVbTemplateTypeFunc;
+                prototype: ParameterABIEventDTOVbTemplate;
+                new (): ParameterABIEventDTOVbTemplate;
+                ctor: { new (): ParameterABIEventDTOVbTemplate; };
+            }
+            const ParameterABIEventDTOVbTemplate: ParameterABIEventDTOVbTemplateTypeFunc;
+
+            // Nethereum.Generators.DTOs.ParameterABIFunctionDTOVbTemplate
+            export interface ParameterABIFunctionDTOVbTemplate extends System.Object {
+                GenerateAllProperties(parameters: Model.ParameterABI[]): string;
+                GenerateProperty(parameter: Model.ParameterABI): string;
+                GenerateAllFunctionParameters(parameters: Model.ParameterABI[]): string;
+                GenerateFunctionParameter(parameter: Model.ParameterABI): string;
+                GenerateAssigmentFunctionParametersToProperties(parameters: Model.ParameterABI[], objectName: string, spacing: string): string;
+                GenerateAssigmentFunctionParameterToProperty(parameter: Model.ParameterABI, objectName: string, spacing: string): string;
+            }
+            export interface ParameterABIFunctionDTOVbTemplateTypeFunc extends TypeFunction {
+                (): ParameterABIFunctionDTOVbTemplateTypeFunc;
+                prototype: ParameterABIFunctionDTOVbTemplate;
+                new (): ParameterABIFunctionDTOVbTemplate;
+                ctor: { new (): ParameterABIFunctionDTOVbTemplate; };
+            }
+            const ParameterABIFunctionDTOVbTemplate: ParameterABIFunctionDTOVbTemplateTypeFunc;
+
+            // Nethereum.Generators.DTOs.StructTypeVbTemplate
+            export interface StructTypeVbTemplate extends CQS.ClassTemplateBase$1<StructTypeModel>, Core.IClassTemplate {
+                GetPartialMainClass(): string;
+            }
+            export interface StructTypeVbTemplateTypeFunc extends TypeFunction {
+                (): StructTypeVbTemplateTypeFunc;
+                prototype: StructTypeVbTemplate;
+                new (model: StructTypeModel): StructTypeVbTemplate;
+                ctor: { new (model: StructTypeModel): StructTypeVbTemplate; };
+            }
+            const StructTypeVbTemplate: StructTypeVbTemplateTypeFunc;
+        }
         module XUnit {
             // Nethereum.Generators.XUnit.SimpleTestGenerator
-            export interface SimpleTestGenerator extends Core.ClassGeneratorBase$2<CQS.ClassTemplateBase$1<SimpleTestModel>, SimpleTestModel>, Core.IFileGenerator, Core.IGenerator {
+            export interface SimpleTestGenerator extends Core.ClassGeneratorBase$2<CQS.ClassTemplateBase$1<SimpleTestModel>, SimpleTestModel>, Core.IFileGenerator, Core.IGenerator, Core.IClassGenerator {
                 get_ContractABI(): Model.ContractABI;
                 InitialiseTemplate(codeGenLanguage: Core.CodeGenLanguage): void;
             }
@@ -1031,7 +1265,7 @@ declare module Nethereum {
             const SimpleTestGenerator: SimpleTestGeneratorTypeFunc;
 
             // Nethereum.Generators.XUnit.SimpleTestModel
-            export interface SimpleTestModel extends Core.TypeMessageModel, Core.IClassModel {
+            export interface SimpleTestModel extends Core.TypeMessageModel, Core.IClassModel, Core.IFileModel {
                 get_ContractABI(): Model.ContractABI;
                 get_CQSNamespace(): string;
                 get_FunctionOutputNamespace(): string;

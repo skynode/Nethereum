@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-//using System.Dynamic;
 using Nethereum.ABI.Model;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Nethereum.ABI.JsonDeserialisation
 {
@@ -16,7 +16,7 @@ namespace Nethereum.ABI.JsonDeserialisation
 
         public EventABI BuildEvent(IDictionary<string, object> eventobject)
         {
-            var eventABI = new EventABI((string) eventobject["name"]);
+            var eventABI = new EventABI((string) eventobject["name"], (bool) eventobject["anonymous"]);
             eventABI.InputParameters = BuildEventParameters((List<object>) eventobject["inputs"]);
 
             return eventABI;
@@ -29,19 +29,57 @@ namespace Nethereum.ABI.JsonDeserialisation
             foreach (IDictionary<string, object> input in inputs)
             {
                 parameterOrder = parameterOrder + 1;
-                var parameter = new Parameter((string) input["type"], (string) input["name"], parameterOrder)
+                var parameter = new Parameter((string)input["type"], (string)input["name"], parameterOrder, TryGetInternalType(input))
                 {
-                    Indexed = (bool) input["indexed"]
+                    Indexed = (bool)input["indexed"]
                 };
+                InitialiseTupleComponents(input, parameter);
+
                 parameters.Add(parameter);
             }
 
             return parameters.ToArray();
         }
 
+        private void InitialiseTupleComponents(IDictionary<string, object> input, Parameter parameter)
+        {
+            if (parameter.ABIType is TupleType tupleType)
+            {
+                tupleType.SetComponents(BuildFunctionParameters((List<object>)input["components"]));
+            }
+
+            var arrayType = parameter.ABIType as ArrayType;
+
+            while (arrayType != null)
+            {
+
+                if (arrayType.ElementType is TupleType arrayTupleType)
+                {
+                    arrayTupleType.SetComponents(BuildFunctionParameters((List<object>)input["components"]));
+                    arrayType = null;
+                }
+                else
+                {
+                    arrayType = arrayType.ElementType as ArrayType;
+                }
+            }
+        }
+
         public FunctionABI BuildFunction(IDictionary<string, object> function)
         {
-            var functionABI = new FunctionABI((string) function["name"], (bool) function["constant"],
+            var constant = false;
+            if (function.ContainsKey("constant"))
+            {
+                constant = (bool)function["constant"];
+            }
+            else
+            {
+                // for solidity >=0.6.0
+                if (function.ContainsKey("stateMutability") && ((string)function["stateMutability"] == "view" || (string)function["stateMutability"] == "pure"))
+                    constant = true;
+            }
+
+            var functionABI = new FunctionABI((string) function["name"], constant,
                 TryGetSerpentValue(function));
             functionABI.InputParameters = BuildFunctionParameters((List<object>) function["inputs"]);
             functionABI.OutputParameters = BuildFunctionParameters((List<object>) function["outputs"]);
@@ -55,18 +93,30 @@ namespace Nethereum.ABI.JsonDeserialisation
             foreach (IDictionary<string, object> input in inputs)
             {
                 parameterOrder = parameterOrder + 1;
-                var parameter = new Parameter((string) input["type"], (string) input["name"], parameterOrder,
+                var parameter = new Parameter((string) input["type"], (string) input["name"], parameterOrder, TryGetInternalType(input),
                     TryGetSignatureValue(input));
+
+                InitialiseTupleComponents(input, parameter);
+
                 parameters.Add(parameter);
             }
 
             return parameters.ToArray();
         }
 
-        public ContractABI DeserialiseContract(string abi)
+        public ContractABI DeserialiseContract(string abi) 
         {
             var convertor = new ExpandoObjectConverter();
-            var contract = JsonConvert.DeserializeObject<List<Dictionary<string,object>>>(abi, convertor);
+            var contract = JsonConvert.DeserializeObject<List<IDictionary<string, object>>>(abi, convertor);
+            return DeserialiseContractBody(contract);
+        }
+        public ContractABI DeserialiseContract(JArray abi) {
+            var convertor = new JObjectToExpandoConverter();
+            return DeserialiseContractBody(convertor.JObjectArray(abi));
+        }
+
+        private ContractABI DeserialiseContractBody(List<IDictionary<string, object>> contract)
+        {
             var functions = new List<FunctionABI>();
             var events = new List<EventABI>();
             ConstructorABI constructor = null;
@@ -99,6 +149,19 @@ namespace Nethereum.ABI.JsonDeserialisation
             catch
             {
                 return false;
+            }
+        }
+
+        public string TryGetInternalType(IDictionary<string, object> parameter)
+        {
+            try
+            {
+                if (parameter.ContainsKey("internalType")) return (string)parameter["internalType"];
+                return null;
+            }
+            catch
+            {
+                return null;
             }
         }
 

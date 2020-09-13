@@ -26,6 +26,16 @@ namespace Nethereum.RPC.Tests.Testers
 
         public IConfigurationRoot Configuration { get; set; }
 
+        public string GetDefaultShhPublicKey()
+        {
+            return GetAppSettingsValue("defaultShhPublicKey");
+        }
+
+        public string GetDefaultShhPrivateKey()
+        {
+            return GetAppSettingsValue("defaultShhPrivateKey");
+        }
+
         public string GetDefaultAccount()
         {
             return GetAppSettingsValue("defaultAccount");
@@ -44,6 +54,12 @@ namespace Nethereum.RPC.Tests.Testers
         public string GetLiveRpcUrl()
         {
             return GetLiveSettingsValue("rpcUrl");
+        }
+
+        //TODO:Subscriptions
+        public string GetLiveWSRpcUrl()
+        {
+            return GetLiveSettingsValue("wsUrl");
         }
 
         public ulong GetBlockNumber()

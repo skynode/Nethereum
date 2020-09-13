@@ -1,3 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+using System.Text;
+using Nethereum.ABI.Util;
 using Nethereum.Hex.HexConvertors.Extensions;
 using Xunit;
 

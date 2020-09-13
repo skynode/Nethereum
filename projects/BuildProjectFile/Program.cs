@@ -14,12 +14,12 @@ namespace BuildProjectFile
 			stringBuilder.Append(CreateOutputFolder ("..\\src\\Nethereum.ABI", "ABI"));
 			stringBuilder.Append(CreateOutputFolder ("..\\src\\Nethereum.RPC", "RPC"));
 			stringBuilder.Append(CreateOutputFolder ("..\\src\\Nethereum.Web3", "Web3"));
+            stringBuilder.Append(CreateOutputFolder ("..\\src\\Nethereum.Model", "Model"));
             stringBuilder.Append(CreateOutputFolder("..\\src\\Nethereum.StandardTokenEIP20", "EIP20"));
             stringBuilder.Append(CreateOutputFolder ("..\\src\\Nethereum.JsonRpc.Client", "NethereumJsonRpc"));
             stringBuilder.Append(CreateOutputFolder("..\\src\\Nethereum.JsonRpc.RpcClient", "NethereumJsonRpcClient"));
             stringBuilder.Append(CreateOutputFolder ("..\\src\\Nethereum.KeyStore", "KeyStore"));
             stringBuilder.Append(CreateOutputFolder("..\\src\\Nethereum.Quorum", "Quorum"));
-            stringBuilder.Append(CreateOutputFolder("..\\src\\Nethereum.ENS", "ENS"));
             stringBuilder.Append(CreateOutputFolder("..\\src\\Nethereum.Geth", "Geth"));
             stringBuilder.Append(CreateOutputFolder("..\\src\\Nethereum.Contracts", "Contracts"));
             stringBuilder.Append(CreateOutputFolder("..\\src\\Nethereum.Util", "Util"));
@@ -28,6 +28,9 @@ namespace BuildProjectFile
             stringBuilder.Append(CreateOutputFolder("..\\src\\Nethereum.Uport", "Uport"));
 		    stringBuilder.Append(CreateOutputFolder("..\\src\\Nethereum.Parity", "Parity"));
 		    stringBuilder.Append(CreateOutputFolder("..\\src\\Nethereum.Accounts", "Accounts"));
+			stringBuilder.Append(CreateOutputFolder("..\\src\\Nethereum.BlockchainProcessing", "BlockchainProcessing"));
+			stringBuilder.Append(CreateOutputFolder("..\\src\\Nethereum.Pantheon", "Pantheon"));
+			stringBuilder.Append(CreateOutputFolder("..\\src\\Nethereum.RSK", "RSK"));
             GenerateFile("Nethereum.Portable\\Nethereum.Portable.csproj", fileTemplatePortable1, fileTemplatePortable2, stringBuilder.ToString());
         }
 
@@ -106,6 +109,7 @@ namespace BuildProjectFile
     <DefineConstants>DEBUG;TRACE;PCL</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition="" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' "">
     <DebugType>pdbonly</DebugType>
@@ -114,6 +118,7 @@ namespace BuildProjectFile
     <DefineConstants>TRACE;PCL</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <!-- A reference to the entire .NET Framework is automatically included -->

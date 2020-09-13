@@ -5,7 +5,7 @@ using Nethereum.RPC.Accounts;
 
 namespace Nethereum.Geth
 {
-    public class Web3Geth : Web3.Web3
+    public class Web3Geth : Web3.Web3, IWeb3Geth
     {
         public Web3Geth(IClient client) : base(client)
         {
@@ -23,11 +23,15 @@ namespace Nethereum.Geth
         {
         }
 
-        public AdminApiService Admin { get; private set; }
+        public IAdminApiService Admin { get; private set; }
 
-        public DebugApiService Debug { get; private set; }
+        public IDebugApiService Debug { get; private set; }
 
-        public MinerApiService Miner { get; private set; }
+        public IMinerApiService Miner { get; private set; }
+
+        public IGethEthApiService GethEth { get; private set; }
+
+        public ITxnPoolApiService TxnPool { get; private set; }
 
         protected override void InitialiseInnerServices()
         {
@@ -35,6 +39,8 @@ namespace Nethereum.Geth
             Miner = new MinerApiService(Client);
             Debug = new DebugApiService(Client);
             Admin = new AdminApiService(Client);
+            GethEth = new GethEthApiService(Client);
+            TxnPool = new TxnPoolApiService(Client);
         }
     }
 }

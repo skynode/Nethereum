@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Nethereum.Hex.HexConvertors.Extensions
@@ -20,9 +21,24 @@ namespace Nethereum.Hex.HexConvertors.Extensions
             return value.StartsWith("0x");
         }
 
+        public static bool IsHex(this string value)
+        {
+            bool isHex;
+            foreach (var c in value.RemoveHexPrefix())
+            {
+                isHex = ((c >= '0' && c <= '9') ||
+                         (c >= 'a' && c <= 'f') ||
+                         (c >= 'A' && c <= 'F'));
+
+                if (!isHex)
+                    return false;
+            }
+            return true;
+        }
+
         public static string RemoveHexPrefix(this string value)
         {
-            return value.Replace("0x", "");
+            return value.Substring(value.StartsWith("0x") ? 2 : 0);
         }
 
         public static bool IsTheSameHex(this string first, string second)
@@ -52,7 +68,7 @@ namespace Nethereum.Hex.HexConvertors.Extensions
             return ToHex(value).TrimStart('0');
         }
 
-        public static byte[] HexToByteArray(this string value)
+        private static byte[] HexToByteArrayInternal(string value)
         {
             byte[] bytes = null;
             if (string.IsNullOrEmpty(value))
@@ -95,6 +111,18 @@ namespace Nethereum.Hex.HexConvertors.Extensions
             return bytes;
         }
 
+        public static byte[] HexToByteArray(this string value)
+        {
+            try {
+                return HexToByteArrayInternal(value);
+            }
+            catch (FormatException ex)
+            {
+                throw new FormatException(string.Format(
+                    "String '{0}' could not be converted to byte array (not hex?).", value), ex);
+            }
+        }
+
         private static byte FromCharacterToByte(char character, int index, int shift = 0)
         {
             var value = (byte) character;
@@ -112,7 +140,7 @@ namespace Nethereum.Hex.HexConvertors.Extensions
             }
             else
             {
-                throw new InvalidOperationException(string.Format(
+                throw new FormatException(string.Format(
                     "Character '{0}' at index '{1}' is not valid alphanumeric character.", character, index));
             }
 

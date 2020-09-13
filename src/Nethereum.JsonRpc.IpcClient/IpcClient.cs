@@ -5,14 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Nethereum.JsonRpc.Client;
 using Newtonsoft.Json;
-using RpcError = Nethereum.JsonRpc.Client.RpcError;
-using RpcRequest = Nethereum.JsonRpc.Client.RpcRequest;
-using System.Net.Sockets;
-using System.Net;
-using System.Diagnostics;
 using Common.Logging;
 using Nethereum.JsonRpc.Client.RpcMessages;
-using Newtonsoft.Json.Linq;
 
 namespace Nethereum.JsonRpc.IpcClient
 {
@@ -36,12 +30,12 @@ namespace Nethereum.JsonRpc.IpcClient
                 if (_pipeClient == null || !_pipeClient.IsConnected)
                 {
                     _pipeClient = new NamedPipeClientStream(IpcPath);
-                    _pipeClient.Connect(ConnectionTimeout);
+                    _pipeClient.Connect((int)ConnectionTimeout.TotalMilliseconds);
                 }
             }
             catch (TimeoutException ex)
             {
-                throw new RpcClientTimeoutException($"Rpc timeout afer {ConnectionTimeout} milliseconds", ex);
+                throw new RpcClientTimeoutException($"Rpc timeout afer {ConnectionTimeout.TotalMilliseconds} milliseconds", ex);
             }
             catch
             {
@@ -93,7 +87,7 @@ namespace Nethereum.JsonRpc.IpcClient
             return memoryStream;
         }
 
-        protected override async Task<TResponse> SendAsync<TRequest, TResponse>(TRequest request)
+        protected override async Task<RpcResponseMessage> SendAsync(RpcRequestMessage request, string route = null)
         {
             var logger = new RpcLogger(_log);
             try
@@ -112,7 +106,7 @@ namespace Nethereum.JsonRpc.IpcClient
                         using (JsonTextReader reader = new JsonTextReader(streamReader))
                         {
                             var serializer = JsonSerializer.Create(JsonSerializerSettings);
-                            var message = serializer.Deserialize<TResponse>(reader);
+                            var message = serializer.Deserialize<RpcResponseMessage>(reader);
                             logger.LogResponse(message);
                             return message;
                         }
@@ -121,8 +115,9 @@ namespace Nethereum.JsonRpc.IpcClient
             }
             catch (Exception ex)
             {
-                logger.LogException(ex);
-                throw new RpcClientUnknownException("Error occurred when trying to send ipc requests(s)", ex);
+                var exception = new RpcClientUnknownException("Error occurred when trying to send ipc requests(s)", ex);
+                logger.LogException(exception);
+                throw exception;
             }
         }
 

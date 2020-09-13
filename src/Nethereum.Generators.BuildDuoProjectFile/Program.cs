@@ -32,6 +32,7 @@ namespace Nethereum.Generators.BuildDuoProjectFile
     <RootNamespace>Nethereum.Generators.DuoCode</RootNamespace>
     <AssemblyName>Nethereum.Generators.DuoCode</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <LangVersion>6</LangVersion>
     <FileAlignment>512</FileAlignment>
     <DisableHandlePackageFileConflicts>true</DisableHandlePackageFileConflicts>
     <NuGetPackageImportStamp>
@@ -74,6 +75,11 @@ namespace Nethereum.Generators.BuildDuoProjectFile
     </PropertyGroup>
     <Error Condition=""!Exists('..\..\packages\DuoCode.3.0.1654.0\build\DuoCode.targets')"" Text=""$([System.String]::Format('$(ErrorText)', '..\..\packages\DuoCode.3.0.1654.0\build\DuoCode.targets'))"" />
   </Target>
+ <PropertyGroup>
+    <PostBuildEvent>xcopy ""$(ProjectDir) scripts\Nethereum.Generators.DuoCode.d.ts"" ""$(SolutionDir) src\Nethereum.Generators.JavaScript\"" /Y /I 
+        xcopy ""$(ProjectDir)scripts\Nethereum.Generators.DuoCode.js"" ""$(SolutionDir)src\Nethereum.Generators.JavaScript\"" /Y /I 
+        xcopy ""$(ProjectDir)scripts\Nethereum.Generators.DuoCode.js.map"" ""$(SolutionDir)src\Nethereum.Generators.JavaScript\"" /Y /I</PostBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name=""BeforeBuild"">

@@ -8,7 +8,8 @@ var n = require('./Nethereum.Generators.DuoCode.js');
 function generateAllClassesInternal(abi, byteCode, contractName, baseNamespace, serviceNamespace, cqsNamespace, dtoNamespace, basePath, pathSeparator, codeGenLang) {
     var contractDes = abiDes.buildContract(abi);
     var classGenerator = new Nethereum.Generators.ContractProjectGenerator(contractDes, contractName, byteCode, baseNamespace, serviceNamespace, cqsNamespace, dtoNamespace, basePath, pathSeparator, codeGenLang);
-    var generatedClases = classGenerator.GenerateAll();
+    classGenerator.set_AddRootNamespaceOnVbProjectsToImportStatements(false);
+    var generatedClases = classGenerator.GenerateAllMessagesFileAndService();
     outputFiles(generatedClases);
 }
 function outputFiles(generatedFiles) {
@@ -31,9 +32,10 @@ function generateNetStandardClassLibrary(projectName, basePath, codeLang) {
 }
 exports.generateNetStandardClassLibrary = generateNetStandardClassLibrary;
 function generateAllClasses(abi, byteCode, contractName, baseNamespace, basePath, codeGenLang) {
-    var serviceNamespace = contractName + ".Service";
-    var cqsNamespace = contractName + ".CQS";
-    var dtoNamespace = contractName + ".DTOs";
+    var serviceNamespace = contractName;
+    //Same, we are generating single file
+    var cqsNamespace = contractName + ".ContractDefinition";
+    var dtoNamespace = contractName + ".ContractDefinition";
     var pathSeparator = path.sep;
     generateAllClassesInternal(abi, byteCode, contractName, baseNamespace, serviceNamespace, cqsNamespace, dtoNamespace, basePath, pathSeparator, codeGenLang);
 }

@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
 using Nethereum.Generators.Core;
 
 namespace Nethereum.Generators.CQS
@@ -19,6 +22,7 @@ namespace Nethereum.Generators.CQS
         {
             return
                 $@"{GenerateNamespaceDependencies()}
+{SpaceUtils.NoTabs}
 {SpaceUtils.NoTabs}namespace {ClassModel.Namespace}
 {SpaceUtils.NoTabs}{{
 {SpaceUtils.NoTabs}{ClassTemplate.GenerateClass()}
@@ -26,4 +30,5 @@ namespace Nethereum.Generators.CQS
 ";
         }
     }
+
 }

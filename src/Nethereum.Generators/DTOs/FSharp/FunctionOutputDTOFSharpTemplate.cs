@@ -19,7 +19,7 @@ namespace Nethereum.Generators.DTOs
                 return
                     $@"{SpaceUtils.OneTab}[<FunctionOutput>]
 {SpaceUtils.OneTab}type {Model.GetTypeName()}() =
-{SpaceUtils.OneTab}
+{SpaceUtils.TwoTabs}inherit FunctionOutputDTO() 
 {_parameterAbiFunctionDtoFSharpTemplate.GenerateAllProperties(Model.FunctionABI.OutputParameters)}
 {SpaceUtils.OneTab}";
             }

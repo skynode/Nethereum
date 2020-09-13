@@ -5,6 +5,7 @@
         admin_addPeer,
         admin_nodeInfo,
         admin_datadir,
+        admin_peers,
         admin_startRPC,
         admin_setSolc,
         admin_startWS,
@@ -32,10 +33,13 @@
         debug_traceTransaction,
         debug_verbosity,
         debug_vmodule,
+        eth_pendingTransactions,
         miner_hashrate,
         miner_start,
         miner_stop,
         miner_setGasPrice,
-        admin_peers
+        txpool_content,
+        txpool_inspect,
+        txpool_status
     }
 }

@@ -1,3 +1,4 @@
+
 using System;
 using System.Threading.Tasks;
  
@@ -20,7 +21,7 @@ namespace Nethereum.RPC.Personal
     ///     Example
     ///     personal.unlockAccount(eth.coinbase, "mypasswd", 300)
     /// </Summary>
-    public class PersonalUnlockAccount : RpcRequestResponseHandler<bool>
+    public class PersonalUnlockAccount : RpcRequestResponseHandler<bool>, IPersonalUnlockAccount
     {
         public PersonalUnlockAccount(IClient client) : base(client, ApiMethods.personal_unlockAccount.ToString())
         {
@@ -41,7 +42,6 @@ namespace Nethereum.RPC.Personal
         /// <summary>
         /// This is compatible with older versions of Geth and Parity
         /// </summary>
-        [Obsolete("This method has been replaced with a duration in seconds using an ulong value instead of a HexBigInteger")]
         public Task<bool> SendRequestAsync(string address, string passPhrase, HexBigInteger durationInSeconds,
            object id = null)
         {

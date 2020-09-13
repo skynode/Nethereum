@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Nethereum.ABI.FunctionEncoding.Attributes;
 using Nethereum.Hex.HexTypes;
 using Nethereum.RPC;
 using Nethereum.RPC.Eth.DTOs;
@@ -9,45 +10,27 @@ namespace Nethereum.Contracts
 {
     public class Contract
     {
-        private BlockParameter defaultBlock;
-
         public Contract(EthApiService eth, string abi, string contractAddress)
         {
             Eth = eth;
             ContractBuilder = new ContractBuilder(abi, contractAddress);
-            if (eth != null)
-                DefaultBlock = eth.DefaultBlock;
         }
 
         public Contract(EthApiService eth, Type contractMessageType, string contractAddress)
         {
             Eth = eth;
             ContractBuilder = new ContractBuilder(contractMessageType, contractAddress);
-            if (eth != null)
-                DefaultBlock = eth.DefaultBlock;
         }
 
         public Contract(EthApiService eth, Type[] contractMessagesTypes, string contractAddress)
         {
             Eth = eth;
             ContractBuilder = new ContractBuilder(contractMessagesTypes, contractAddress);
-            if (eth != null)
-                DefaultBlock = eth.DefaultBlock;
         }
 
-        private EthNewFilter EthNewFilter => Eth.Filters.NewFilter;
+        private IEthNewFilter EthNewFilter => Eth.Filters.NewFilter;
 
         public ContractBuilder ContractBuilder { get; set; }
-
-        public BlockParameter DefaultBlock
-        {
-            get => defaultBlock;
-            set
-            {
-                defaultBlock = value;
-                SetDefaultBlock();
-            }
-        }
 
         public string Address => ContractBuilder.Address;
 
@@ -66,12 +49,17 @@ namespace Nethereum.Contracts
 
         public Event GetEvent(string name)
         {
-            return new Event(this, GetEventBuilder(name));
+            return new Event(this, ContractBuilder.GetEventAbi(name));
         }
 
-        public Event<T> GetEvent<T>(string name) where T: new()
+        public Event GetEventBySignature(string signature)
         {
-            return new Event<T>(this, GetEventBuilder(name));
+            return new Event(this, ContractBuilder.GetEventAbiBySignature(signature));
+        }
+
+        public Event<T> GetEvent<T>() where T: IEventDTO, new()
+        {
+            return new Event<T>(this);
         }
 
         public Function<TFunction> GetFunction<TFunction>()
@@ -84,9 +72,9 @@ namespace Nethereum.Contracts
             return new Function(this, GetFunctionBuilder(name));
         }
 
-        private EventBuilder GetEventBuilder(string name)
+        public Function GetFunctionBySignature(string signature)
         {
-            return ContractBuilder.GetEventBuilder(name);
+            return new Function(this, GetFunctionBuilderBySignature(signature));
         }
 
         private FunctionBuilder GetFunctionBuilder(string name)
@@ -94,15 +82,14 @@ namespace Nethereum.Contracts
             return ContractBuilder.GetFunctionBuilder(name);
         }
 
+        private FunctionBuilder GetFunctionBuilderBySignature(string signature)
+        {
+            return ContractBuilder.GetFunctionBuilderBySignature(signature);
+        }
+
         private FunctionBuilder<TFunctionInput> GetFunctionBuilder<TFunctionInput>()
         {
             return ContractBuilder.GetFunctionBuilder<TFunctionInput>();
-        }
-
-        private void SetDefaultBlock()
-        {
-            if (ContractBuilder != null)
-                ContractBuilder.DefaultBlock = DefaultBlock;
         }
     }
 }

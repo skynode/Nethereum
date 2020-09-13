@@ -20,6 +20,7 @@ namespace Nethereum.Contracts.IntegrationTests.FiltersEvents
             _ethereumClientIntegrationFixture = ethereumClientIntegrationFixture;
         }
 
+        [Event("Multiplied")]
         public class EventMultiplied
         {
             [Parameter("uint", "a", 1, true)]
@@ -29,6 +30,7 @@ namespace Nethereum.Contracts.IntegrationTests.FiltersEvents
             public int Result { get; set; }
         }
 
+        [Event("MultipliedLog")]
         public class EventMultipliedSenderLog
         {
             [Parameter("uint", "a", 1, true)]
@@ -120,8 +122,14 @@ namespace Nethereum.Contracts.IntegrationTests.FiltersEvents
             var filterAll = await multipliedEvent.CreateFilterAsync();
             //filter on the first indexed parameter
             var filter69 = await multipliedEvent.CreateFilterAsync(69);
-            //filter on the second indexed parameter
-            var filter49 = await multipliedEvent.CreateFilterAsync<object, int>(null, 49);
+
+            HexBigInteger filter49 = null;
+           
+          
+               //filter on the second indexed parameter
+               filter49 = await multipliedEvent.CreateFilterAsync<object, int>(null, 49);
+            
+
             //filter OR on the first indexed parameter
             var filter69And18 = await multipliedEvent.CreateFilterAsync(new[] {69, 18});
 
@@ -151,8 +159,13 @@ namespace Nethereum.Contracts.IntegrationTests.FiltersEvents
             var logs = await web3.Eth.Filters.GetFilterChangesForEthNewFilter.SendRequestAsync(filterAllContract);
             var eventLogsAll = await multipliedEvent.GetFilterChanges<EventMultiplied>(filterAll);
             var eventLogs69 = await multipliedEvent.GetFilterChanges<EventMultiplied>(filter69);
-            //parity check
-            var eventLogsResult49 = await multipliedEvent.GetFilterChanges<EventMultiplied>(filter49);
+
+            
+                //Parity does not accept null values for filter
+                var eventLogsResult49 = await multipliedEvent.GetFilterChanges<EventMultiplied>(filter49);
+
+            
+
             var eventLogsFor69and18 = await multipliedEvent.GetFilterChanges<EventMultiplied>(filter69And18);
 
 

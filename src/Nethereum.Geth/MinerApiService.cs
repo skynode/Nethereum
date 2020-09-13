@@ -1,10 +1,11 @@
 using Nethereum.Geth.RPC.Miner;
+using Nethereum.Geth.RPC.TxnPool;
 using Nethereum.JsonRpc.Client;
 using Nethereum.RPC;
 
 namespace Nethereum.Geth
 {
-    public class MinerApiService : RpcClientWrapper
+    public class MinerApiService : RpcClientWrapper, IMinerApiService
     {
         public MinerApiService(IClient client) : base(client)
         {
@@ -13,8 +14,8 @@ namespace Nethereum.Geth
             Stop = new MinerStop(client);
         }
 
-        public MinerSetGasPrice SetGasPrice { get; }
-        public MinerStart Start { get; }
-        public MinerStop Stop { get; }
+        public IMinerSetGasPrice SetGasPrice { get; }
+        public IMinerStart Start { get; }
+        public IMinerStop Stop { get; }
     }
 }

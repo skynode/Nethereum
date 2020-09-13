@@ -14,6 +14,7 @@ namespace Nethereum.JsonRpc.Client
     public class RpcClient : ClientBase
     {
         private const int NUMBER_OF_SECONDS_TO_RECREATE_HTTP_CLIENT = 60;
+        public static int MaximumConnectionsPerServer { get; set; } = 20;
         private readonly AuthenticationHeaderValue _authHeaderValue;
         private readonly Uri _baseUrl;
         private readonly HttpClientHandler _httpClientHandler;
@@ -22,6 +23,7 @@ namespace Nethereum.JsonRpc.Client
         private volatile bool _firstHttpClient;
         private HttpClient _httpClient;
         private HttpClient _httpClient2;
+        private bool _rotateHttpClients = true;
         private DateTime _httpClientLastCreatedAt;
         private readonly object _lockObject = new object();
 
@@ -29,58 +31,77 @@ namespace Nethereum.JsonRpc.Client
             JsonSerializerSettings jsonSerializerSettings = null, HttpClientHandler httpClientHandler = null, ILog log = null)
         {
             _baseUrl = baseUrl;
+
+            if (authHeaderValue == null)
+            {
+                authHeaderValue = UserAuthentication.FromUri(baseUrl)?.GetBasicAuthenticationHeaderValue();
+            }
+
+            _authHeaderValue = authHeaderValue;
+
+            if (jsonSerializerSettings == null)
+                jsonSerializerSettings = DefaultJsonSerializerSettingsFactory.BuildDefaultJsonSerializerSettings();
+            
+            _jsonSerializerSettings = jsonSerializerSettings;
+            _httpClientHandler = httpClientHandler;
+            _log = log;
+
+#if NETCOREAPP2_1 || NETCOREAPP3_1
+            _httpClient = CreateNewHttpClient();
+            _rotateHttpClients = false;
+#else
+            CreateNewRotatedHttpClient();
+#endif
+        }
+
+        private static HttpMessageHandler GetDefaultHandler()
+        {
+            try
+            {
+#if NETSTANDARD2_0
+                return new HttpClientHandler
+                {
+                    MaxConnectionsPerServer = MaximumConnectionsPerServer
+                };
+           
+#elif NETCOREAPP2_1 || NETCOREAPP3_1
+                return new SocketsHttpHandler
+                {
+                    PooledConnectionLifetime = new TimeSpan(0, NUMBER_OF_SECONDS_TO_RECREATE_HTTP_CLIENT, 0),
+                    PooledConnectionIdleTimeout = new TimeSpan(0, NUMBER_OF_SECONDS_TO_RECREATE_HTTP_CLIENT, 0),
+                    MaxConnectionsPerServer = MaximumConnectionsPerServer
+                };
+#else
+                return null;
+#endif
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public RpcClient(Uri baseUrl, HttpClient httpClient, AuthenticationHeaderValue authHeaderValue = null,
+           JsonSerializerSettings jsonSerializerSettings = null, ILog log = null)
+        {
+            _baseUrl = baseUrl;
+
+            if (authHeaderValue == null)
+            {
+                authHeaderValue = UserAuthentication.FromUri(baseUrl)?.GetBasicAuthenticationHeaderValue();
+            }
+
             _authHeaderValue = authHeaderValue;
             if (jsonSerializerSettings == null)
                 jsonSerializerSettings = DefaultJsonSerializerSettingsFactory.BuildDefaultJsonSerializerSettings();
             _jsonSerializerSettings = jsonSerializerSettings;
-            _httpClientHandler = httpClientHandler;
             _log = log;
-            CreateNewHttpClient();
+            InitialiseHttpClient(httpClient);
+            _httpClient = httpClient;
+            _rotateHttpClients = false;
         }
 
-        protected override async Task<T> SendInnerRequestAync<T>(RpcRequest request, string route = null)
-        {
-            var response =
-                await SendAsync(
-                        new RpcRequestMessage(request.Id, request.Method, request.RawParameters), route)
-                    .ConfigureAwait(false);
-            HandleRpcError(response);
-            return response.GetResult<T>();
-        }
-
-        protected override async Task<T> SendInnerRequestAync<T>(string method, string route = null,
-            params object[] paramList)
-        {
-            var request = new RpcRequestMessage(Guid.NewGuid().ToString(), method, paramList);
-            var response = await SendAsync(request, route).ConfigureAwait(false);
-            HandleRpcError(response);
-            return response.GetResult<T>();
-        }
-
-        private void HandleRpcError(RpcResponseMessage response)
-        {
-            if (response.HasError)
-                throw new RpcResponseException(new RpcError(response.Error.Code, response.Error.Message,
-                    response.Error.Data));
-        }
-
-        public override async Task SendRequestAsync(RpcRequest request, string route = null)
-        {
-            var response =
-                await SendAsync(
-                        new RpcRequestMessage(request.Id, request.Method, request.RawParameters), route)
-                    .ConfigureAwait(false);
-            HandleRpcError(response);
-        }
-
-        public override async Task SendRequestAsync(string method, string route = null, params object[] paramList)
-        {
-            var request = new RpcRequestMessage(Guid.NewGuid().ToString(), method, paramList);
-            var response = await SendAsync(request, route).ConfigureAwait(false);
-            HandleRpcError(response);
-        }
-
-        private async Task<RpcResponseMessage> SendAsync(RpcRequestMessage request, string route = null)
+        protected override async Task<RpcResponseMessage> SendAsync(RpcRequestMessage request, string route = null)
         {
             var logger = new RpcLogger(_log);
             try
@@ -89,7 +110,7 @@ namespace Nethereum.JsonRpc.Client
                 var rpcRequestJson = JsonConvert.SerializeObject(request, _jsonSerializerSettings);
                 var httpContent = new StringContent(rpcRequestJson, Encoding.UTF8, "application/json");
                 var cancellationTokenSource = new CancellationTokenSource();
-                cancellationTokenSource.CancelAfter(TimeSpan.FromMilliseconds(ConnectionTimeout));
+                cancellationTokenSource.CancelAfter(ConnectionTimeout);
 
                 logger.LogRequest(rpcRequestJson);
 
@@ -110,54 +131,100 @@ namespace Nethereum.JsonRpc.Client
             }
             catch(TaskCanceledException ex)
             {
-                throw new RpcClientTimeoutException($"Rpc timeout afer {ConnectionTimeout} milliseconds", ex);
+                 var exception = new RpcClientTimeoutException($"Rpc timeout after {ConnectionTimeout.TotalMilliseconds} milliseconds", ex);
+                 logger.LogException(exception);
+                 throw exception;
             }
             catch (Exception ex)
             {
-                logger.LogException(ex);
-                throw new RpcClientUnknownException("Error occurred when trying to send rpc requests(s)", ex);
+                var exception = new RpcClientUnknownException("Error occurred when trying to send rpc requests(s)", ex);
+                logger.LogException(exception);
+                throw exception;
             }
         }
 
-       
-
         private HttpClient GetOrCreateHttpClient()
         {
-            lock (_lockObject)
+            if (_rotateHttpClients) //already created if not rotated
             {
-                var timeSinceCreated = DateTime.UtcNow - _httpClientLastCreatedAt;
-                if (timeSinceCreated.TotalSeconds > NUMBER_OF_SECONDS_TO_RECREATE_HTTP_CLIENT)
-                    CreateNewHttpClient();
+                lock (_lockObject)
+                {
+                    var timeSinceCreated = DateTime.UtcNow - _httpClientLastCreatedAt;
+                    if (timeSinceCreated.TotalSeconds > NUMBER_OF_SECONDS_TO_RECREATE_HTTP_CLIENT)
+                        CreateNewRotatedHttpClient();
+                    return GetClient();
+                }
+            }
+            else
+            {
                 return GetClient();
             }
         }
 
         private HttpClient GetClient()
         {
-            lock (_lockObject)
+            if (_rotateHttpClients)
             {
-                return _firstHttpClient ? _httpClient : _httpClient2;
+                lock (_lockObject)
+                {
+
+                    return _firstHttpClient ? _httpClient : _httpClient2;
+                }
+            }
+            else
+            {
+                return _httpClient;
             }
         }
 
-        private void CreateNewHttpClient()
+        private void CreateNewRotatedHttpClient()
         {
-            var httpClient = _httpClientHandler != null ? new HttpClient(_httpClientHandler) : new HttpClient();
-            httpClient.DefaultRequestHeaders.Authorization = _authHeaderValue;
-            httpClient.BaseAddress = _baseUrl;
+            var httpClient = CreateNewHttpClient();
             _httpClientLastCreatedAt = DateTime.UtcNow;
+            
             if (_firstHttpClient)
+            {
                 lock (_lockObject)
                 {
                     _firstHttpClient = false;
                     _httpClient2 = httpClient;
                 }
+            }
             else
+            {
                 lock (_lockObject)
                 {
                     _firstHttpClient = true;
                     _httpClient = httpClient;
                 }
+            }
+        }
+
+        private HttpClient CreateNewHttpClient()
+        {
+            HttpClient httpClient = new HttpClient();
+            
+            if (_httpClientHandler != null)
+            {
+                httpClient = new HttpClient(_httpClientHandler);
+            }
+            else
+            {
+                var handler = GetDefaultHandler();
+                if(handler != null)
+                {
+                    httpClient = new HttpClient(handler);
+                }
+            }
+
+            InitialiseHttpClient(httpClient);
+            return httpClient;
+        }
+
+        private void InitialiseHttpClient(HttpClient httpClient)
+        {
+            httpClient.DefaultRequestHeaders.Authorization = _authHeaderValue;
+            httpClient.BaseAddress = _baseUrl;
         }
     }
 }

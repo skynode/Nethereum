@@ -1,5 +1,7 @@
-﻿using Nethereum.ABI.FunctionEncoding.Attributes;
+﻿using System.Numerics;
+using Nethereum.ABI.FunctionEncoding.Attributes;
 using Nethereum.Contracts.CQS;
+using Nethereum.Contracts.Extensions;
 using Nethereum.Hex.HexTypes;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.XUnitEthereumClients;
@@ -15,6 +17,76 @@ namespace Nethereum.Contracts.IntegrationTests.CQS
         public ContractHandlers(EthereumClientIntegrationFixture ethereumClientIntegrationFixture)
         {
             _ethereumClientIntegrationFixture = ethereumClientIntegrationFixture;
+        }
+
+        [Fact]
+
+        public async void ShouldDecodeTransactionDeployment()
+        {
+            var senderAddress = AccountFactory.Address;
+            var web3 = _ethereumClientIntegrationFixture.GetWeb3();
+
+            var deploymentMessage = new StandardTokenDeployment
+            {
+                TotalSupply = 10000,
+                FromAddress = senderAddress,
+                Gas = new HexBigInteger(900000)
+            };
+
+            var deploymentHandler = web3.Eth.GetContractDeploymentHandler<StandardTokenDeployment>();
+            var transactionReceipt = await deploymentHandler.SendRequestAndWaitForReceiptAsync(deploymentMessage);
+
+            var transaction = await web3.Eth.Transactions.GetTransactionByHash.SendRequestAsync(transactionReceipt.TransactionHash);
+
+            var deploymentMessageDecoded = transaction.DecodeTransactionToDeploymentMessage<StandardTokenDeployment>();
+                
+            Assert.Equal(deploymentMessage.TotalSupply, deploymentMessageDecoded.TotalSupply);
+            Assert.Equal(deploymentMessage.FromAddress.ToLower(), deploymentMessageDecoded.FromAddress.ToLower());
+            Assert.Equal(deploymentMessage.Gas, deploymentMessageDecoded.Gas);
+
+        }
+
+
+        [Fact]
+
+        public async void ShouldDecodeTransactionInput()
+        {
+            var senderAddress = AccountFactory.Address;
+            var web3 = _ethereumClientIntegrationFixture.GetWeb3();
+
+            var deploymentMessage = new StandardTokenDeployment
+            {
+                TotalSupply = 10000,
+                FromAddress = senderAddress,
+                Gas = new HexBigInteger(900000)
+            };
+
+            var deploymentHandler = web3.Eth.GetContractDeploymentHandler<StandardTokenDeployment>();
+            var transactionReceipt = await deploymentHandler.SendRequestAndWaitForReceiptAsync(deploymentMessage);
+
+            var contractAddress = transactionReceipt.ContractAddress;
+            var newAddress = "0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe";
+
+
+            var transactionMessage = new TransferFunction
+            {
+                FromAddress = senderAddress,
+                To = newAddress,
+                TokenAmount = 1000
+            };
+
+            var transferHandler = web3.Eth.GetContractTransactionHandler<TransferFunction>();
+            var transferReceipt =
+                await transferHandler.SendRequestAndWaitForReceiptAsync(contractAddress, transactionMessage);
+
+            var transaction = await web3.Eth.Transactions.GetTransactionByHash.SendRequestAsync(transferReceipt.TransactionHash);
+
+            var transferDecoded = transaction.DecodeTransactionToFunctionMessage<TransferFunction>();
+
+            Assert.Equal(transactionMessage.To.ToLower(), transferDecoded.To.ToLower());
+            Assert.Equal(transactionMessage.FromAddress.ToLower(), transferDecoded.FromAddress.ToLower());
+            Assert.Equal(transactionMessage.TokenAmount, transferDecoded.TokenAmount);
+
         }
 
         [Fact]
@@ -47,13 +119,13 @@ namespace Nethereum.Contracts.IntegrationTests.CQS
 
             var transferHandler = web3.Eth.GetContractTransactionHandler<TransferFunction>();
 
-            var estimatedGas = await transferHandler.EstimateGasAsync(transactionMessage, contractAddress);
+            var estimatedGas = await transferHandler.EstimateGasAsync(contractAddress, transactionMessage);
 
             // for demo purpouses gas estimation it is done in the background so we don't set it
             transactionMessage.Gas = estimatedGas.Value; 
 
             var transferReceipt =
-                await transferHandler.SendRequestAndWaitForReceiptAsync(transactionMessage, contractAddress);
+                await transferHandler.SendRequestAndWaitForReceiptAsync(contractAddress, transactionMessage);
       
             var balanceOfFunctionMessage = new BalanceOfFunction
             {
@@ -63,13 +135,13 @@ namespace Nethereum.Contracts.IntegrationTests.CQS
 
             var balanceHandler = web3.Eth.GetContractQueryHandler<BalanceOfFunction>();
             var balanceFirstTransaction =
-                await balanceHandler.QueryAsync<int>(balanceOfFunctionMessage, contractAddress);
+                await balanceHandler.QueryAsync<int>(contractAddress, balanceOfFunctionMessage);
 
 
             Assert.Equal(1000, balanceFirstTransaction);
 
             var transferReceipt2 =
-                await transferHandler.SendRequestAndWaitForReceiptAsync(transactionMessage, contractAddress);
+                await transferHandler.SendRequestAndWaitForReceiptAsync(contractAddress, transactionMessage);
             var balanceSecondTransaction =
                 await balanceHandler.QueryDeserializingToObjectAsync<BalanceOfFunctionOutput>(balanceOfFunctionMessage,
                     contractAddress);
@@ -85,7 +157,7 @@ namespace Nethereum.Contracts.IntegrationTests.CQS
     }
 
     [Function("transfer", "bool")]
-    public class TransferFunction : ContractMessage
+    public class TransferFunction : FunctionMessage
     {
         [Parameter("address", "_to", 1)]
         public string To { get; set; }
@@ -95,14 +167,14 @@ namespace Nethereum.Contracts.IntegrationTests.CQS
     }
 
     [Function("balanceOf", "uint256")]
-    public class BalanceOfFunction : ContractMessage
+    public class BalanceOfFunction : FunctionMessage
     {
         [Parameter("address", "_owner", 1)]
         public string Owner { get; set; }
     }
 
     [FunctionOutput]
-    public class BalanceOfFunctionOutput
+    public class BalanceOfFunctionOutput:IFunctionOutputDTO
     {
         [Parameter("uint256", 1)]
         public int Balance { get; set; }
@@ -120,5 +192,22 @@ namespace Nethereum.Contracts.IntegrationTests.CQS
 
         [Parameter("uint256", "totalSupply")]
         public int TotalSupply { get; set; }
+ 
+    }
+
+    [Event("Transfer")]
+    public class TransferEventDTOBase : IEventDTO
+    {
+        [Parameter("address", "_from", 1, true)]
+        public string From { get; set; }
+        [Parameter("address", "_to", 2, true)]
+        public string To { get; set; }
+        [Parameter("uint256", "_value", 3, false)]
+        public BigInteger Value { get; set; }
+    }
+
+    public partial class TransferEventDTO : TransferEventDTOBase
+    {
+
     }
 }

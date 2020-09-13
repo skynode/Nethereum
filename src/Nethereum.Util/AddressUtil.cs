@@ -1,28 +1,35 @@
-﻿using System.Globalization;
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Text.RegularExpressions;
 using Nethereum.Hex.HexConvertors.Extensions;
 
 namespace Nethereum.Util
 {
-
-    public static class AddressExtensions
+    public class UniqueAddressList : HashSet<string>
     {
-        public static string ConvertToEthereumChecksumAddress(this string address)
-        {
-           return AddressUtil.Current.ConvertToChecksumAddress(address);
-        }
-
-        public static bool IsEthereumChecksumAddress(this string address)
-        {
-            return AddressUtil.Current.IsChecksumAddress(address);
-        }
+        public UniqueAddressList() : base(new AddressEqualityComparer()) { }
     }
 
 
+    public class AddressEqualityComparer : IEqualityComparer<string>
+    {
+        public bool Equals(string x, string y)
+        {
+            return x.IsTheSameAddress(y);
+        }
+
+        public int GetHashCode(string obj)
+        {
+            return -1;
+        }
+    }
+
     public class AddressUtil
     {
-
         private static AddressUtil _current;
+        public const string AddressEmptyAsHex = "0x0";
 
         public static AddressUtil Current
         {
@@ -31,6 +38,42 @@ namespace Nethereum.Util
                 if (_current == null) _current = new AddressUtil();
                 return _current;
             }
+        }
+
+        public bool IsAnEmptyAddress(string address)
+        {
+#if !NET35
+            if (string.IsNullOrWhiteSpace(address))
+                return true;
+#else
+            if (string.IsNullOrEmpty(address)) return true;
+#endif
+                return address == AddressEmptyAsHex;
+
+        }
+
+        public bool IsNotAnEmptyAddress(string address)
+        {
+            return !IsAnEmptyAddress(address);
+
+        }
+
+        public string AddressValueOrEmpty(string address)
+        {
+            return address.IsAnEmptyAddress() ? AddressEmptyAsHex : address;
+        }
+
+        public bool IsEmptyOrEqualsAddress(string address1, string candidate)
+        {
+            return IsAnEmptyAddress(address1) || AreAddressesTheSame(address1,candidate);
+        }
+
+        public bool AreAddressesTheSame(string address1, string address2)
+        {
+            if (address1.IsAnEmptyAddress() && address2.IsAnEmptyAddress()) return true;
+            if (address1.IsAnEmptyAddress() || address2.IsAnEmptyAddress()) return false;
+            //simple string comparison as opposed to use big integer comparison
+            return string.Equals(address1.EnsureHexPrefix()?.ToLowerInvariant(), address2.EnsureHexPrefix()?.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase); 
         }
 
         public string ConvertToChecksumAddress(string address)
@@ -49,34 +92,31 @@ namespace Nethereum.Util
 
         public string ConvertToValid20ByteAddress(string address)
         {
+            if (address == null) address = string.Empty;
             address = address.RemoveHexPrefix();
             return address.PadLeft(40, '0').EnsureHexPrefix();
         }
 
         public bool IsValidAddressLength(string address)
         {
+            if (string.IsNullOrEmpty(address)) return false;
             address = address.RemoveHexPrefix();
             return address.Length == 40;
         }
 
-        //public bool IsValidEthereumAddress(string address)
-        //{
-        //    Regex r = new Regex("^(0x){1}[0-9a-fA-F]{40}$");
-        //    // Doesn't match length, prefix and hex
-        //    if (!r.IsMatch(address))
-        //        return false;
-        //    // It's all lowercase, so no checksum needed
-        //    else if (address == address.ToLower())
-        //        return true;
-        //    // Do checksum
-        //    else
-        //    {
-        //        return new AddressUtil().IsChecksumAddress(address);
-        //    }
-        //}
+        /// <summary>
+        /// Validates if the hex string is 40 alphanumeric characters
+        /// </summary>
+        public bool IsValidEthereumAddressHexFormat(string address)
+        {
+            if (string.IsNullOrEmpty(address)) return false;
+            return address.HasHexPrefix() && IsValidAddressLength(address) &&
+                   address.IsHex();
+        }
 
         public bool IsChecksumAddress(string address)
         {
+            if (string.IsNullOrEmpty(address)) return false;
             address = address.RemoveHexPrefix();
             var addressHash = new Sha3Keccack().CalculateHash(address.ToLower());
 

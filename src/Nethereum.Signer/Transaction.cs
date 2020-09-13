@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Numerics;
+using System.Threading.Tasks;
 using Nethereum.Hex.HexConvertors.Extensions;
+using Nethereum.Model;
 using Nethereum.RLP;
 
 namespace Nethereum.Signer
 {
-    public class Transaction : TransactionBase
+    public class Transaction : SignedTransactionBase
     {
         public Transaction(byte[] rawData)
         {
@@ -75,11 +77,18 @@ namespace Nethereum.Signer
             byte[] data)
         {
             if (receiveAddress == null)
-                receiveAddress = EMPTY_BYTE_ARRAY;
+                receiveAddress = DefaultValues.EMPTY_BYTE_ARRAY;
             //order  nonce, gasPrice, gasLimit, receiveAddress, value, data
             return new[] {nonce, gasPrice, gasLimit, receiveAddress, value, data};
         }
 
         public override EthECKey Key => EthECKey.RecoverFromSignature(SimpleRlpSigner.Signature, SimpleRlpSigner.RawHash);
+
+#if !DOTNET35
+        public override async Task SignExternallyAsync(IEthExternalSigner externalSigner)
+        {
+           await externalSigner.SignAsync(this).ConfigureAwait(false);
+        }
+#endif
     }
 }

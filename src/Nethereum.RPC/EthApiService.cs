@@ -3,22 +3,25 @@ using Nethereum.RPC.Eth;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.RPC.Eth.Services;
 using Nethereum.RPC.TransactionManagers;
+using System;
 
 namespace Nethereum.RPC
 {
-    public class EthApiService : RpcClientWrapper
+    public class EthApiService : RpcClientWrapper, IEthApiService
     {
         private BlockParameter defaultBlock;
         private ITransactionManager _transactionManager;
 
-        public EthApiService(IClient client) : this(client, new TransactionManager(client))
+        public EthApiService(IClient client) : this(client, 
+            new TransactionManager(client))
         {
-           
         }
 
         public EthApiService(IClient client, ITransactionManager transactionManager) : base(client)
         {
             Client = client;
+            
+            ChainId = new EthChainId(client);
             Accounts = new EthAccounts(client);
             CoinBase = new EthCoinBase(client);
             GasPrice = new EthGasPrice(client);
@@ -38,6 +41,7 @@ namespace Nethereum.RPC
 
             DefaultBlock = BlockParameter.CreateLatest();
             TransactionManager = transactionManager;
+            TransactionManager.Client = client; //Ensure is the same
         }
 
         public BlockParameter DefaultBlock
@@ -50,32 +54,38 @@ namespace Nethereum.RPC
             }
         }
 
-        public EthAccounts Accounts { get; private set; }
+        public IEthChainId ChainId { get; private set; }
+        public IEthAccounts Accounts { get; private set; }
 
-        public EthCoinBase CoinBase { get; private set; }
+        public IEthCoinBase CoinBase { get; private set; }
 
-        public EthGasPrice GasPrice { get; private set; }
-        public EthGetBalance GetBalance { get; }
+        public IEthGasPrice GasPrice { get; private set; }
+        public IEthGetBalance GetBalance { get; }
 
-        public EthGetCode GetCode { get; }
+        public IEthGetCode GetCode { get; }
 
-        public EthGetStorageAt GetStorageAt { get; }
+        public IEthGetStorageAt GetStorageAt { get; }
 
-        public EthProtocolVersion ProtocolVersion { get; private set; }
-        public EthSign Sign { get; private set; }
+        public IEthProtocolVersion ProtocolVersion { get; private set; }
+        public IEthSign Sign { get; private set; }
 
-        public EthSyncing Syncing { get; private set; }
+        public IEthSyncing Syncing { get; private set; }
 
-        public EthApiTransactionsService Transactions { get; }
+        public IEthApiTransactionsService Transactions { get; }
 
-        public EthApiUncleService Uncles { get; private set; }
-        public EthApiMiningService Mining { get; private set; }
-        public EthApiBlockService Blocks { get; private set; }
+        public IEthApiUncleService Uncles { get; private set; }
+        public IEthApiMiningService Mining { get; private set; }
+        public IEthApiBlockService Blocks { get; private set; }
 
-        public EthApiFilterService Filters { get; private set; }
+        public IEthApiFilterService Filters { get; private set; }
 
-        public EthApiCompilerService Compile { get; private set; }
-
+        public IEthApiCompilerService Compile { get; private set; }
+#if !DOTNET35
+        public virtual IEtherTransferService  GetEtherTransferService()
+        {
+            return new EtherTransferService(TransactionManager);
+        }
+#endif
         public virtual ITransactionManager TransactionManager
         {
             get { return _transactionManager; }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Nethereum.Hex.HexConvertors.Extensions;
 
 namespace Nethereum.RLP
@@ -103,16 +104,11 @@ namespace Nethereum.RLP
             return BitConverter.ToInt32(bytes, 0);
         }
 
-        /// <summary>
-        ///     Parses byte[] message into RLP items
-        /// </summary>
-        /// <param name="msgData">raw RLP data </param>
-        /// <returns> RlpList: outcome of recursive RLP structure </returns>
-        public static RLPCollection Decode(byte[] msgData)
+        public static IRLPElement Decode(byte[] msgData)
         {
             var rlpCollection = new RLPCollection();
             Decode(msgData, 0, 0, msgData.Length, 1, rlpCollection);
-            return rlpCollection;
+            return rlpCollection[0];
         }
 
         /// <summary>
@@ -372,6 +368,11 @@ namespace Nethereum.RLP
 
                 return data;
             }
+        }
+
+        public static byte[] EncodeElementsAndList(params byte[][] dataItems)
+        {
+            return EncodeList(dataItems.Select(EncodeElement).ToArray());
         }
 
         public static byte[] EncodeList(params byte[][] items)

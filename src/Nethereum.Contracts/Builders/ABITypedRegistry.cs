@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using Nethereum.ABI.FunctionEncoding.Attributes;
 using Nethereum.ABI.Model;
@@ -7,26 +8,48 @@ namespace Nethereum.Contracts
 {
     public static class ABITypedRegistry
     {
-        private static Dictionary<Type, FunctionABI> _functionAbiRegistry = new Dictionary<Type, FunctionABI>();
-        private static Dictionary<Type, EventABI> _eventAbiRegistry = new Dictionary<Type, EventABI>();
+        private static ConcurrentDictionary<Type, FunctionABI> _functionAbiRegistry = new ConcurrentDictionary<Type, FunctionABI>();
+        private static ConcurrentDictionary<Type, EventABI> _eventAbiRegistry = new ConcurrentDictionary<Type, EventABI>();
         private static AttributesToABIExtractor _abiExtractor = new AttributesToABIExtractor();
 
         public static FunctionABI GetFunctionABI<TFunctionMessage>()
         {
-            if (!_functionAbiRegistry.ContainsKey(typeof(TFunctionMessage)))
+            return GetFunctionABI(typeof(TFunctionMessage));
+        }
+
+        public static FunctionABI GetFunctionABI(Type functionABIType)
+        {
+            if (!_functionAbiRegistry.ContainsKey(functionABIType))
             {
-                _functionAbiRegistry[typeof(TFunctionMessage)] =_abiExtractor.ExtractFunctionABI(typeof(TFunctionMessage));
+                var functionAbi = _abiExtractor.ExtractFunctionABI(functionABIType);
+                if (functionAbi == null)
+                {
+                    throw new ArgumentException(functionABIType.ToString() + " is not a valid Function Type");
+                }
+
+                _functionAbiRegistry[functionABIType] = functionAbi;
             }
-            return _functionAbiRegistry[typeof(TFunctionMessage)];
+            return _functionAbiRegistry[functionABIType];
         }
 
         public static EventABI GetEvent<TEvent>()
         {
-            if (!_eventAbiRegistry.ContainsKey(typeof(TEvent)))
+            return GetEvent(typeof(TEvent));
+        }
+
+        public static EventABI GetEvent(Type type)
+        {
+            if (!_eventAbiRegistry.ContainsKey(type))
             {
-                _eventAbiRegistry[typeof(TEvent)] = _abiExtractor.ExtractEventABI(typeof(TEvent));
+                var eventABI = _abiExtractor.ExtractEventABI(type);
+                if (null == eventABI)
+                {
+                    throw new ArgumentException(type.ToString() + " is not a valid Event Type");
+                }
+
+                _eventAbiRegistry[type] = eventABI;
             }
-            return _eventAbiRegistry[typeof(TEvent)];
+            return _eventAbiRegistry[type];
         }
     }
 }

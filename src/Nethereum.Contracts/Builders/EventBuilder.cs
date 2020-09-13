@@ -1,20 +1,16 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Nethereum.ABI.FunctionEncoding;
-using Nethereum.ABI.FunctionEncoding.Attributes;
 using Nethereum.ABI.Model;
+using Nethereum.Contracts.Extensions;
 using Nethereum.RPC.Eth.DTOs;
 using Newtonsoft.Json.Linq;
 
 namespace Nethereum.Contracts
 {
+    [Obsolete("Use the EventABI extensions instead")]
     public class EventBuilder
     {
-        public static EventBuilder CreateNewBuilder<TEventDTOType>(string contractAddress)
-        {
-            var eventABI = ABITypedRegistry.GetEvent<TEventDTOType>();
-            return new EventBuilder(contractAddress, eventABI);
-        }
-
         public string ContractAddress { get; set; }
 
         public EventBuilder(string contractAddress, EventABI eventAbi)

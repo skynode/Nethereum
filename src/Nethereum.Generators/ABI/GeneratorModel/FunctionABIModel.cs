@@ -12,13 +12,17 @@ namespace Nethereum.Generators.Core
         {
             FunctionABI = functionABI;
             this._abiTypeToDotnetTypeConvertor = abiTypeToDotnetTypeConvertor;
+            
         }
 
         public string GetSingleOutputReturnType()
         {
             if (FunctionABI.OutputParameters != null && FunctionABI.OutputParameters.Length == 1)
             {
-                return _abiTypeToDotnetTypeConvertor.Convert(FunctionABI.OutputParameters[0].Type, true);
+                var parameterModel = new ParameterABIModel(FunctionABI.OutputParameters[0]);
+                
+                return _abiTypeToDotnetTypeConvertor.Convert(parameterModel.Parameter.Type,  
+                    parameterModel.GetStructTypeClassName(), true);
             }
             return null;
         }
@@ -34,12 +38,19 @@ namespace Nethereum.Generators.Core
 
         public bool IsMultipleOutput()
         {
-            return FunctionABI.OutputParameters != null && FunctionABI.OutputParameters.Length > 1;
+            return (FunctionABI.OutputParameters != null && FunctionABI.OutputParameters.Length > 1) || 
+                (FunctionABI.OutputParameters != null && FunctionABI.OutputParameters.Length ==1 && 
+                FunctionABI.OutputParameters[0].Type.StartsWith("tuple")) ;
         }
 
         public bool IsSingleOutput()
         {
-            return FunctionABI.OutputParameters != null && FunctionABI.OutputParameters.Length == 1;
+            return FunctionABI.OutputParameters != null && FunctionABI.OutputParameters.Length == 1 && !FunctionABI.OutputParameters[0].Type.StartsWith("tuple");
+        }
+  
+        public bool HasNoInputParameters()
+        {
+            return FunctionABI.InputParameters == null || FunctionABI.InputParameters.Length == 0;
         }
 
         public bool HasNoReturn()
